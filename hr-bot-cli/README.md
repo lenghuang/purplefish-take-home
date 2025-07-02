@@ -35,3 +35,17 @@ With this, I have a few follow up questions.
 - I see we have given the agent two methods of sorts -- handle, and prompt. Is this the most common pattern? What else might I include here? What if candidate gives a "not good enough" response? Like how do we negotiate with the candidate? Can we have some like clarify_answer method that runs at most some X amount of times? Then we could generically call this multiple times to get more details. This may be good if a candidate has some "uhh's" over phone call or something.
 
 - How do I give a candidate an out to change their answer, or maybe ask for the recrutier to repeat the question?
+
+### Version 1
+
+I gave all the above as feedback to the LLM, and it went crazy! Writing constructors and very object oriented looking code that I'm not used to seeing in Typescript, but reflected many common C# patterns I see at work. With this in mind, I felt that it could be more extensible to multiple job types, styles of scripts, and more.
+
+Here's an example of a very simple negotation happening. It could use some work, but it's progress!
+
+![photos/negotiationv1.png](photos/negotiationv1.png)
+
+I needed some bug fixes, like deduplicating code, and creating a seed file, but it got VERY far in just a few prompts and $2 worth of Claude Sonnet 3.5 lol.
+
+![photos/canyouelaboratev1.png](photos/canyouelaboratev1.png)
+
+It didn't seem too happy when I asked for help clarifying what acute care was... oops.

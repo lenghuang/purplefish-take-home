@@ -72,19 +72,20 @@ export class SQLiteInterviewRepository
   }
 
   async create(interview: Interview): Promise<Interview> {
+    const sql = `INSERT INTO ${this.tableName} (id, template_id, user_id, status, current_step_id, metadata, started_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`;
     try {
-      await this.db.run("BEGIN TRANSACTION");
-
-      const result = await super.create({
-        ...interview,
-        startedAt: new Date(),
-        status: "active",
-      });
-
-      await this.db.run("COMMIT");
-      return result;
+      await this.runQuery(sql, [
+        interview.id,
+        interview.templateId,
+        interview.userId,
+        interview.status,
+        interview.currentStepId,
+        JSON.stringify(interview.metadata),
+        interview.startedAt.toISOString(),
+      ]);
+      return interview;
     } catch (error) {
-      await this.db.run("ROLLBACK");
       throw new ApplicationError(
         "Error creating interview",
         "DATABASE_ERROR",
@@ -94,19 +95,38 @@ export class SQLiteInterviewRepository
   }
 
   async update(id: string, interview: Partial<Interview>): Promise<Interview> {
+    if (interview.status === "completed" && !interview.completedAt) {
+      interview.completedAt = new Date();
+    }
+
+    const fields = Object.keys(interview)
+      .map((key) => {
+        if (key === "templateId") return "template_id";
+        if (key === "userId") return "user_id";
+        if (key === "currentStepId") return "current_step_id";
+        if (key === "startedAt") return "started_at";
+        if (key === "completedAt") return "completed_at";
+        return key;
+      })
+      .join(" = ?, ");
+    const values = Object.values(interview).map((v) =>
+      v instanceof Date ? v.toISOString() : v
+    );
+
+    const sql = `UPDATE ${this.tableName} SET ${fields} = ? WHERE id = ?`;
+
     try {
-      await this.db.run("BEGIN TRANSACTION");
-
-      if (interview.status === "completed" && !interview.completedAt) {
-        interview.completedAt = new Date();
+      await this.runQuery(sql, [...values, id]);
+      const updatedInterview = await this.findById(id);
+      if (!updatedInterview) {
+        throw new ApplicationError(
+          "Interview not found after update",
+          "NOT_FOUND",
+          404
+        );
       }
-
-      const result = await super.update(id, interview);
-
-      await this.db.run("COMMIT");
-      return result;
+      return updatedInterview;
     } catch (error) {
-      await this.db.run("ROLLBACK");
       throw new ApplicationError(
         "Error updating interview",
         "DATABASE_ERROR",
