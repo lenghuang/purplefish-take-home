@@ -49,3 +49,21 @@ I needed some bug fixes, like deduplicating code, and creating a seed file, but 
 ![photos/canyouelaboratev1.png](photos/canyouelaboratev1.png)
 
 It didn't seem too happy when I asked for help clarifying what acute care was... oops.
+
+![photos/dbbrowserv1.png](photos/dbbrowserv1.png)
+
+Finally, the underlying database was a little messy. I think my next steps will be getting this data cleaner. Taking a step back, now that I have this proof of concept built out, how do I want to approach this website?
+
+I'm thinking:
+
+- Frontend that lets you log in as candidate or company
+- Candidate view:
+  - Frontend that lets you pick from a set of jobs to get "screened" for.
+  - Upon picking, that opens up a chat session that interacts with the chat bot.
+- Company view:
+  - Insights dashboard with aggregate stats
+  - View how many people have interviewed so far for each role
+  - Also have view for all candidates (paginated?) to see data specific to them.
+  - We should know how to format them since the template (could/is?) stored somewhere central.
+
+Candidate view is most important here. I think a full database viewer with some simple UI components is probably enough for "company view" for now.
