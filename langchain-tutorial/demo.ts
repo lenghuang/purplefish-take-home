@@ -13,6 +13,7 @@ const tools = [
   // Weather tool
   tool(
     async ({ city }: { city: string }) => {
+      console.log(" [DEBUG] getWeather tool called with city:", city);
       // In a real app, you'd call a weather API here
       const weatherData = {
         city,
@@ -22,9 +23,12 @@ const tools = [
         ],
         humidity: Math.floor(Math.random() * 50) + 30, // 30-80%
       };
-      return `The weather in ${city} is ${weatherData.condition.toLowerCase()} with a temperature of ${
+      console.log(" [DEBUG] Generated weather data:", weatherData);
+      const result = `The weather in ${city} is ${weatherData.condition.toLowerCase()} with a temperature of ${
         weatherData.temperature
       }°C and ${weatherData.humidity}% humidity.`;
+      console.log(" [DEBUG] Returning weather result:", result);
+      return result;
     },
     {
       name: "getWeather",
@@ -38,12 +42,21 @@ const tools = [
   // Calculator tool
   tool(
     async ({ expression }: { expression: string }) => {
+      console.log(
+        " [DEBUG] calculate tool called with expression:",
+        expression
+      );
       try {
         // Safe evaluation of mathematical expressions
+        console.log(" [DEBUG] Evaluating expression:", expression);
         const result = new Function(`return (${expression})`)();
-        return `The result of ${expression} is ${result}`;
+        const response = `The result of ${expression} is ${result}`;
+        console.log(" [DEBUG] Calculation successful. Result:", response);
+        return response;
       } catch (error) {
-        return `Error calculating expression: ${error}`;
+        const errorMessage = `Error calculating expression: ${error}`;
+        console.error(" [DEBUG] Calculation error:", errorMessage);
+        return errorMessage;
       }
     },
     {
