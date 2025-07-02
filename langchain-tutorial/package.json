@@ -1,0 +1,26 @@
+{
+  "name": "langchain-tutorial",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@langchain/community": "^0.3.47",
+    "@langchain/core": "^0.3.61",
+    "@langchain/langgraph": "^0.3.6",
+    "@langchain/openai": "^0.5.16",
+    "dotenv": "^16.6.1",
+    "langchain": "^0.3.29",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.25",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "start:demo": "ts-node --esm demo.ts",
+    "start:sql-demo": "ts-node --esm demo_sql_tool.ts"
+  }
+}
