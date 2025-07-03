@@ -1,0 +1,208 @@
+import {
+  AgentConfig,
+  ConversationContext,
+  AgentMessage,
+  TemplatePrompt,
+  LLMResponse,
+} from "./types";
+import { Conversation, Message } from "../database/schema";
+import { trimContextWindow, formatPrompt, parseLLMResponse } from "./utils";
+import { ConversationRepository } from "../database/repositories/conversation";
+import Database from "better-sqlite3";
+
+export interface AgentServiceInterface {
+  setTemplateContext(
+    sessionId: string,
+    template: import("../template/types").Template
+  ): Promise<void>;
+  initializeConversation(
+    userId: string,
+    templateId: string
+  ): Promise<Conversation>;
+  getConversationContext(
+    conversationId: string
+  ): Promise<ConversationContext | null>;
+  addMessage(
+    conversationId: string,
+    role: "user" | "assistant",
+    content: string
+  ): Promise<Message>;
+  getMessagesForConversation(conversationId: string): Promise<Message[]>;
+  generateResponse(
+    conversationId: string,
+    templatePrompt: TemplatePrompt
+  ): Promise<LLMResponse>;
+  callLLM(messages: AgentMessage[]): Promise<any>;
+}
+
+/**
+ * AgentService handles LLM integration, context management, and DB persistence.
+ */
+export class AgentService implements AgentServiceInterface {
+  private config: AgentConfig;
+  private conversationRepo: ConversationRepository;
+  private dbService: import("../database/service").DatabaseService;
+  private db: Database.Database;
+  // Placeholder for LLM client (to be implemented with actual provider)
+  private llmClient: any;
+
+  constructor(
+    config: AgentConfig,
+    dbService: import("../database/service").DatabaseService
+  ) {
+    this.config = config;
+    this.dbService = dbService;
+    this.db = dbService.connection;
+    this.conversationRepo = new ConversationRepository(dbService);
+    // this.llmClient = ... // Initialize LLM client here
+  }
+
+  /**
+   * Sets the template context for a session (conversation).
+   * Updates the templateId for the given sessionId (conversationId).
+   */
+  async setTemplateContext(
+    sessionId: string,
+    template: import("../template/types").Template
+  ): Promise<void> {
+    try {
+      await this.conversationRepo.update(sessionId, {
+        templateId: template.id,
+        updatedAt: new Date(),
+      });
+    } catch (err) {
+      console.error("Failed to set template context:", err);
+      throw err;
+    }
+  }
+
+  /**
+   * Initializes a new conversation and persists it.
+   */
+  async initializeConversation(
+    userId: string,
+    templateId: string
+  ): Promise<Conversation> {
+    const conversation: Conversation = {
+      id: crypto.randomUUID(),
+      userId,
+      templateId,
+      status: "active",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return await this.conversationRepo.create(conversation);
+  }
+
+  /**
+   * Retrieves the full conversation context (conversation + messages).
+   */
+  async getConversationContext(
+    conversationId: string
+  ): Promise<ConversationContext | null> {
+    const conversation = await this.conversationRepo.findById(conversationId);
+    if (!conversation) return null;
+    const messages = this.getMessagesForConversation(conversationId);
+    return {
+      conversation,
+      messages: await messages,
+    };
+  }
+
+  /**
+   * Adds a message to the conversation (persists to DB).
+   */
+  async addMessage(
+    conversationId: string,
+    role: "user" | "assistant",
+    content: string
+  ): Promise<Message> {
+    const message: Message = {
+      id: crypto.randomUUID(),
+      conversationId,
+      role,
+      content,
+      timestamp: new Date(),
+    };
+    // Direct SQL insert (since no MessageRepository exists)
+    const stmt = this.db.prepare(
+      "INSERT INTO messages (id, conversationId, role, content, timestamp) VALUES (?, ?, ?, ?, ?)"
+    );
+    stmt.run(
+      message.id,
+      message.conversationId,
+      message.role,
+      message.content,
+      message.timestamp.toISOString()
+    );
+    return message;
+  }
+
+  /**
+   * Retrieves all messages for a conversation, ordered by timestamp.
+   */
+  async getMessagesForConversation(conversationId: string): Promise<Message[]> {
+    const stmt = this.db.prepare(
+      "SELECT id, conversationId, role, content, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp ASC"
+    );
+    const rows = stmt.all(conversationId);
+    return rows.map((row: any) => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+    }));
+  }
+
+  /**
+   * Generates an LLM response for a given conversation and prompt.
+   * - Loads context/history
+   * - Formats prompt
+   * - Calls LLM (placeholder)
+   * - Persists assistant message
+   * - Returns LLM response
+   */
+  async generateResponse(
+    conversationId: string,
+    templatePrompt: TemplatePrompt
+  ): Promise<LLMResponse> {
+    const context = await this.getConversationContext(conversationId);
+    if (!context) throw new Error("Conversation not found");
+
+    // Prepare message history for LLM (trimmed to context window)
+    const history: AgentMessage[] = context.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+    }));
+    const trimmedHistory = trimContextWindow(
+      history,
+      this.config.contextWindow
+    );
+
+    // Format the new prompt
+    const promptMessages = formatPrompt(templatePrompt);
+
+    // Compose the full prompt for the LLM
+    const llmMessages = [...trimmedHistory, ...promptMessages];
+
+    // Call the LLM (placeholder)
+    const rawResponse = await this.callLLM(llmMessages);
+
+    // Parse and persist the assistant's response
+    const llmResponse = parseLLMResponse(rawResponse);
+    await this.addMessage(conversationId, "assistant", llmResponse.content);
+
+    return llmResponse;
+  }
+
+  /**
+   * Placeholder for LLM API call.
+   * Replace with actual LLM provider integration.
+   */
+  async callLLM(messages: AgentMessage[]): Promise<any> {
+    // Example: return await this.llmClient.chat({ messages, ...this.config });
+    return {
+      choices: [{ message: { content: "[LLM response placeholder]" } }],
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    };
+  }
+}
