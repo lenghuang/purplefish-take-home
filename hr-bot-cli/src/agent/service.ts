@@ -8,10 +8,17 @@ import {
 import { conversations, messages } from "../db/schema";
 import { trimContextWindow, formatPrompt, parseLLMResponse } from "./utils";
 import { ConversationRepository } from "../db/repositories/conversationRepository";
-import { InferModel } from "drizzle-orm";
+import { InferSelectModel } from "drizzle-orm";
+// LangChain imports for OpenAI chat
+import { ChatOpenAI } from "@langchain/openai";
+import {
+  HumanMessage,
+  SystemMessage,
+  AIMessage,
+} from "@langchain/core/messages";
 
-type Conversation = InferModel<typeof conversations>;
-type Message = InferModel<typeof messages>;
+type Conversation = InferSelectModel<typeof conversations>;
+type Message = InferSelectModel<typeof messages>;
 
 export interface AgentServiceInterface {
   setTemplateContext(
@@ -53,7 +60,13 @@ export class AgentService implements AgentServiceInterface {
     this.conversationRepo = new ConversationRepository();
     this.messageRepo =
       new (require("../db/repositories/messageRepository").MessageRepository)();
-    // this.llmClient = ... // Initialize LLM client here
+
+    // Initialize LangChain ChatOpenAI client
+    this.llmClient = new ChatOpenAI({
+      openAIApiKey: config.apiKey,
+      modelName: config.model,
+      temperature: config.temperature ?? 0.7,
+    });
   }
 
   /**
@@ -177,10 +190,30 @@ export class AgentService implements AgentServiceInterface {
    * Replace with actual LLM provider integration.
    */
   async callLLM(messages: AgentMessage[]): Promise<any> {
-    // Example: return await this.llmClient.chat({ messages, ...this.config });
+    // Map AgentMessage[] to LangChain message objects
+    const lcMessages = messages.map((msg) => {
+      switch (msg.role) {
+        case "system":
+          return new SystemMessage(msg.content);
+        case "assistant":
+          return new AIMessage(msg.content);
+        case "user":
+        default:
+          return new HumanMessage(msg.content);
+      }
+    });
+
+    // Call the LLM using LangChain
+    const response = await this.llmClient.call(lcMessages);
+
+    // LangChain's response is a BaseMessage, but we want to match OpenAI's format
     return {
-      choices: [{ message: { content: "[LLM response placeholder]" } }],
-      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      choices: [{ message: { content: response.content } }],
+      usage: response?.llmOutput?.usage || {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      },
     };
   }
 }

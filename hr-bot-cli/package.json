@@ -7,7 +7,9 @@
     "start": "tsc && node dist/index.js",
     "test": "jest",
     "seed": "ts-node src/db/seed.ts",
-    "migrate": "ts-node src/db/migrate.ts"
+    "migrate": "ts-node src/db/migrate.ts",
+    "generate": "drizzle-kit generate",
+    "db:reset": "drizzle-kit generate && ts-node src/db/migrate.ts && ts-node src/db/seed.ts"
   },
   "keywords": [],
   "author": "",
