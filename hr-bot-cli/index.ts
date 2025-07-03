@@ -20,6 +20,8 @@ async function main() {
 
     // User ID (stub, could be replaced with auth)
     const userId = "user123";
+    await templateManager.selectTemplate(selectedTemplate.id);
+    await templateManager.saveSelectionToDatabase(userId);
 
     // Create agent config
     const agentConfig = {
@@ -47,9 +49,21 @@ async function main() {
     while (!finished) {
       // Get prompt for current step
       const prompt = templateManager.getPromptForStep(stepIndex);
-      if (prompt) {
-        cli.addMessage("assistant", prompt);
-      }
+
+      console.log("[DEBUG] prompt", prompt);
+
+      // Let the LLM ask the question (rephrased/contextualized)
+      const templatePrompt = {
+        templateId: selectedTemplate.id,
+        variables: {},
+        userPrompt: prompt || "",
+      };
+
+      const llmResponse = await agent.generateResponse(
+        conversation.id,
+        templatePrompt
+      );
+      cli.addMessage("assistant", llmResponse.content);
 
       cli.showProgress(stepIndex + 1, totalSteps);
 
@@ -58,18 +72,6 @@ async function main() {
 
       // Add user message to conversation
       await agent.addMessage(conversation.id, "user", userInput);
-
-      // Generate LLM response
-      const templatePrompt = {
-        templateId: selectedTemplate.id,
-        variables: {},
-        userPrompt: prompt || "",
-      };
-      const llmResponse = await agent.generateResponse(
-        conversation.id,
-        templatePrompt
-      );
-      cli.addMessage("assistant", llmResponse.content);
 
       stepIndex++;
       finished = stepIndex >= totalSteps;

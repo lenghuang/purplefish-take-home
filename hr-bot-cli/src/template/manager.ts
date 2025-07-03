@@ -85,10 +85,10 @@ export class TemplateManager {
         content = {};
       }
       return {
-        id: row.id,
+        ...content,
         name: row.name,
         description: row.description,
-        ...content,
+        id: row.id, // Ensure DB id always takes precedence
       };
     });
     dbTemplates.forEach((tpl) => {
@@ -146,6 +146,11 @@ export class TemplateManager {
    * Returns the currently selected template, or null.
    */
   getSelectedTemplate(): Template | null {
+    console.log(
+      "[DEBUG]",
+      this.selectionState.selectedTemplateId,
+      this.templates
+    );
     if (!this.selectionState.selectedTemplateId) return null;
     return this.templates.get(this.selectionState.selectedTemplateId) || null;
   }
@@ -158,6 +163,7 @@ export class TemplateManager {
     previousAnswers?: Record<string, any>
   ): string | null {
     const tpl = this.getSelectedTemplate();
+    console.log("[DEBUG] tpl", tpl);
     if (!tpl || stepIndex < 0 || stepIndex >= tpl.steps.length) return null;
     return generatePrompt(tpl, stepIndex, previousAnswers);
   }
