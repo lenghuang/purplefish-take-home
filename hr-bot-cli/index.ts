@@ -41,22 +41,46 @@ async function main() {
       selectedTemplate.id
     );
 
+    // Add a system prompt to instruct the LLM to act as the interviewer
+    const systemPrompt = `You are an HR screening bot. You are interviewing a candidate for the position of "${
+      selectedTemplate.role || selectedTemplate.name
+    }". Ask the candidate the following questions, one at a time, and wait for their response before proceeding. Do not answer the questions yourself.`;
     // Interview loop
     let finished = false;
     let stepIndex = 0;
     const totalSteps = selectedTemplate.steps.length;
 
-    while (!finished) {
-      // Get prompt for current step
+    // First question
+    const firstPrompt = templateManager.getPromptForStep(stepIndex);
+    if (typeof firstPrompt === "string" && firstPrompt) {
+      cli.addMessage("assistant", firstPrompt);
+      await agent.addMessage(conversation.id, "assistant", firstPrompt);
+    } else {
+      cli.addMessage("assistant", "Let's get started!");
+      await agent.addMessage(
+        conversation.id,
+        "assistant",
+        "Let's get started!"
+      );
+    }
+    cli.showProgress(stepIndex + 1, totalSteps);
+
+    let userInput = await cli.promptUser("Your response");
+    cli.addMessage("user", userInput);
+    await agent.addMessage(conversation.id, "user", userInput);
+
+    stepIndex++;
+
+    // For subsequent steps, let the LLM generate the next question based on conversation history
+    while (!finished && stepIndex < totalSteps) {
       const prompt = templateManager.getPromptForStep(stepIndex);
 
-      console.log("[DEBUG] prompt", prompt);
-
-      // Let the LLM ask the question (rephrased/contextualized)
+      // Use the template prompt as context for the LLM, but now the LLM can see the user's previous answer
       const templatePrompt = {
         templateId: selectedTemplate.id,
         variables: {},
         userPrompt: prompt || "",
+        systemPrompt, // Always include the system prompt
       };
 
       const llmResponse = await agent.generateResponse(
@@ -64,13 +88,12 @@ async function main() {
         templatePrompt
       );
       cli.addMessage("assistant", llmResponse.content);
+      await agent.addMessage(conversation.id, "assistant", llmResponse.content);
 
       cli.showProgress(stepIndex + 1, totalSteps);
 
-      const userInput = await cli.promptUser("Your response");
+      userInput = await cli.promptUser("Your response");
       cli.addMessage("user", userInput);
-
-      // Add user message to conversation
       await agent.addMessage(conversation.id, "user", userInput);
 
       stepIndex++;
