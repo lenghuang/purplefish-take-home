@@ -12,9 +12,11 @@ import icuNurseTemplate from "./examples/icu-nurse";
 import seniorEngineerTemplate from "./examples/senior-engineer";
 
 // Database and agent integration (assume these services exist)
-import { DatabaseService } from "../database/service";
 import { AgentService } from "../agent/service";
 import { getConfig } from "../config";
+
+import { TemplateRepository } from "../db/repositories/templateRepository";
+import { UserTemplateSelectionRepository } from "../db/repositories/userTemplateSelectionRepository";
 
 export class TemplateManager {
   private templates: Map<TemplateId, Template> = new Map();
@@ -22,29 +24,27 @@ export class TemplateManager {
     selectedTemplateId: null,
     options: [],
   };
-  private dbService: DatabaseService;
   private agentService: AgentService;
+  private templateRepo: TemplateRepository;
+  private userTemplateSelectionRepo: UserTemplateSelectionRepository;
 
-  private constructor(dbService: DatabaseService, agentService: AgentService) {
+  private constructor(agentService: AgentService) {
     this.loadBuiltInTemplates();
-    this.dbService = dbService;
     this.agentService = agentService;
+    this.templateRepo = new TemplateRepository();
+    this.userTemplateSelectionRepo = new UserTemplateSelectionRepository();
   }
 
   static async init(): Promise<TemplateManager> {
     const config = getConfig();
-    const dbService = await DatabaseService.init(config.database.filename);
-    const agentService = new AgentService(
-      {
-        provider: config.llm.provider,
-        model: config.llm.modelName,
-        apiKey: config.llm.apiKey,
-        contextWindow: 10,
-        temperature: config.llm.temperature,
-      },
-      dbService
-    );
-    return new TemplateManager(dbService, agentService);
+    const agentService = new AgentService({
+      provider: config.llm.provider,
+      model: config.llm.modelName,
+      apiKey: config.llm.apiKey,
+      contextWindow: 10,
+      temperature: config.llm.temperature,
+    });
+    return new TemplateManager(agentService);
   }
 
   /**
@@ -71,8 +71,26 @@ export class TemplateManager {
    * Loads templates from the database and merges with built-in templates.
    */
   async loadTemplatesFromDatabase() {
-    const dbTemplates: Template[] =
-      (await this.dbService.getAllTemplates?.()) || [];
+    // Map DB rows to Template type
+    const dbTemplatesRaw = await this.templateRepo.findAll();
+    const dbTemplates: Template[] = dbTemplatesRaw.map((row: any) => {
+      // If content is JSON, parse and merge with row
+      let content: any = {};
+      try {
+        content =
+          typeof row.content === "string"
+            ? JSON.parse(row.content)
+            : row.content;
+      } catch {
+        content = {};
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        ...content,
+      };
+    });
     dbTemplates.forEach((tpl) => {
       const result = validateTemplate(tpl);
       if (result.valid) {
@@ -149,26 +167,43 @@ export class TemplateManager {
    */
   async saveSelectionToDatabase(userId: string) {
     if (!this.selectionState.selectedTemplateId) return;
-    await this.dbService.saveUserTemplateSelection?.(
-      userId,
-      this.selectionState.selectedTemplateId
-    );
+    // Upsert logic: check if selection exists, update or create
+    const selections = await this.userTemplateSelectionRepo.findByUser(userId);
+    if (selections && selections.length > 0) {
+      // Update the latest selection
+      const latest = selections[0];
+      await this.userTemplateSelectionRepo.update(latest.id, {
+        templateId: this.selectionState.selectedTemplateId,
+        selectedAt: new Date(),
+      });
+    } else {
+      await this.userTemplateSelectionRepo.create({
+        userId,
+        templateId: this.selectionState.selectedTemplateId,
+        selectedAt: new Date(),
+      });
+    }
   }
 
   /**
    * Example: Load template selection from the database (stub).
    */
   async loadSelectionFromDatabase(userId: string) {
-    const templateId = await this.dbService.getUserTemplateSelection?.(userId);
-    if (templateId && this.templates.has(templateId)) {
-      this.selectionState.selectedTemplateId = templateId;
+    const selections = await this.userTemplateSelectionRepo.findByUser(userId);
+    if (selections && selections.length > 0) {
+      // Get the latest selection
+      const latest = selections[0];
+      const templateId = latest.templateId;
+      if (templateId && this.templates.has(templateId)) {
+        this.selectionState.selectedTemplateId = templateId;
+      }
     }
   }
 
   /**
    * Example: Provide template-specific context to the agent layer (stub).
    */
-  provideTemplateContextToAgent(sessionId: string) {
+  provideTemplateContextToAgent(sessionId: number) {
     const tpl = this.getSelectedTemplate();
     if (tpl) {
       this.agentService.setTemplateContext?.(sessionId, tpl);

@@ -2,7 +2,7 @@
  * Template system types for my-hr-bot-cli
  */
 
-export type TemplateId = string;
+export type TemplateId = number;
 
 export interface TemplateStep {
   id: string;

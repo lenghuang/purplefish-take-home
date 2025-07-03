@@ -1,7 +1,7 @@
 import { Template } from "../types";
 
 const icuNurseTemplate: Template = {
-  id: "icu-nurse",
+  id: 2,
   name: "ICU Nurse Interview",
   description:
     "Interview template for ICU nurse candidates, focusing on clinical skills, critical thinking, and patient care.",

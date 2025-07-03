@@ -1,13 +1,7 @@
 import { getConfig } from "./src/config";
-import {
-  DatabaseService,
-  DatabaseServiceInterface,
-} from "./src/database/service";
 import TemplateManager from "./src/template/manager";
 import { CLIInterface } from "./src/cli/interface";
-import { ChatOpenAI } from "@langchain/openai";
 import { AgentService, AgentServiceInterface } from "./src/agent/service";
-import { Template } from "./src/template/types";
 
 async function main() {
   // Load configuration
@@ -16,14 +10,6 @@ async function main() {
   // Initialize TemplateManager (which also initializes the database)
   const templateManager = await TemplateManager.init();
   const templates = templateManager.getAllTemplates();
-  const dbService = templateManager["dbService"];
-
-  // Set up LLM
-  const llm = new ChatOpenAI({
-    modelName: config.llm.modelName,
-    temperature: config.llm.temperature,
-    openAIApiKey: config.llm.apiKey,
-  });
 
   // Set up CLI interface
   const cli = new CLIInterface();
@@ -45,10 +31,7 @@ async function main() {
     };
 
     // Create agent service
-    const agent: AgentServiceInterface = new AgentService(
-      agentConfig,
-      dbService
-    );
+    const agent: AgentServiceInterface = new AgentService(agentConfig);
 
     // Initialize conversation
     const conversation = await agent.initializeConversation(
@@ -96,8 +79,6 @@ async function main() {
     cli.exit("Interview finished. Goodbye!");
   } catch (err) {
     cli.handleError(err);
-  } finally {
-    dbService.close();
   }
 }
 

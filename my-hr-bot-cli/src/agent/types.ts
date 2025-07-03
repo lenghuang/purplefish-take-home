@@ -1,4 +1,7 @@
-import { Conversation, Message } from "../database/schema";
+import { conversations, messages } from "../db/schema";
+import { InferModel } from "drizzle-orm";
+type Conversation = InferModel<typeof conversations>;
+type Message = InferModel<typeof messages>;
 
 /**
  * Agent configuration options (e.g., LLM provider, model, API key, context window, etc.)
@@ -37,7 +40,7 @@ export interface AgentMessage {
  * This can be extended as needed for different prompt templates.
  */
 export interface TemplatePrompt {
-  templateId: string;
+  templateId: number;
   variables: Record<string, any>;
   systemPrompt?: string;
   userPrompt: string;

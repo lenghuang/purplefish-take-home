@@ -1,7 +1,7 @@
 import { Template } from "../types";
 
 const softwareEngineerTemplate: Template = {
-  id: "software-engineer",
+  id: 1,
   name: "Software Engineer Interview",
   description:
     "Interview template for software engineering candidates, focusing on technical and behavioral skills.",

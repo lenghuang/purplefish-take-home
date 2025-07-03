@@ -5,31 +5,34 @@ import {
   TemplatePrompt,
   LLMResponse,
 } from "./types";
-import { Conversation, Message } from "../database/schema";
+import { conversations, messages } from "../db/schema";
 import { trimContextWindow, formatPrompt, parseLLMResponse } from "./utils";
-import { ConversationRepository } from "../database/repositories/conversation";
-import Database from "better-sqlite3";
+import { ConversationRepository } from "../db/repositories/conversationRepository";
+import { InferModel } from "drizzle-orm";
+
+type Conversation = InferModel<typeof conversations>;
+type Message = InferModel<typeof messages>;
 
 export interface AgentServiceInterface {
   setTemplateContext(
-    sessionId: string,
+    sessionId: number,
     template: import("../template/types").Template
   ): Promise<void>;
   initializeConversation(
     userId: string,
-    templateId: string
+    templateId: number
   ): Promise<Conversation>;
   getConversationContext(
-    conversationId: string
+    conversationId: number
   ): Promise<ConversationContext | null>;
   addMessage(
-    conversationId: string,
-    role: "user" | "assistant",
+    conversationId: number,
+    sender: "user" | "assistant",
     content: string
   ): Promise<Message>;
-  getMessagesForConversation(conversationId: string): Promise<Message[]>;
+  getMessagesForConversation(conversationId: number): Promise<Message[]>;
   generateResponse(
-    conversationId: string,
+    conversationId: number,
     templatePrompt: TemplatePrompt
   ): Promise<LLMResponse>;
   callLLM(messages: AgentMessage[]): Promise<any>;
@@ -41,19 +44,15 @@ export interface AgentServiceInterface {
 export class AgentService implements AgentServiceInterface {
   private config: AgentConfig;
   private conversationRepo: ConversationRepository;
-  private dbService: import("../database/service").DatabaseService;
-  private db: Database.Database;
+  private messageRepo: import("../db/repositories/messageRepository").MessageRepository;
   // Placeholder for LLM client (to be implemented with actual provider)
   private llmClient: any;
 
-  constructor(
-    config: AgentConfig,
-    dbService: import("../database/service").DatabaseService
-  ) {
+  constructor(config: AgentConfig) {
     this.config = config;
-    this.dbService = dbService;
-    this.db = dbService.connection;
-    this.conversationRepo = new ConversationRepository(dbService);
+    this.conversationRepo = new ConversationRepository();
+    this.messageRepo =
+      new (require("../db/repositories/messageRepository").MessageRepository)();
     // this.llmClient = ... // Initialize LLM client here
   }
 
@@ -62,13 +61,13 @@ export class AgentService implements AgentServiceInterface {
    * Updates the templateId for the given sessionId (conversationId).
    */
   async setTemplateContext(
-    sessionId: string,
+    sessionId: number,
     template: import("../template/types").Template
   ): Promise<void> {
     try {
       await this.conversationRepo.update(sessionId, {
         templateId: template.id,
-        updatedAt: new Date(),
+        // No updatedAt in schema, so omit if not present
       });
     } catch (err) {
       console.error("Failed to set template context:", err);
@@ -81,31 +80,29 @@ export class AgentService implements AgentServiceInterface {
    */
   async initializeConversation(
     userId: string,
-    templateId: string
+    templateId: number
   ): Promise<Conversation> {
-    const conversation: Conversation = {
-      id: crypto.randomUUID(),
+    const conversationData = {
       userId,
       templateId,
-      status: "active",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      startedAt: new Date(),
+      // endedAt: null, // optional
     };
-    return await this.conversationRepo.create(conversation);
+    return await this.conversationRepo.create(conversationData);
   }
 
   /**
    * Retrieves the full conversation context (conversation + messages).
    */
   async getConversationContext(
-    conversationId: string
+    conversationId: number
   ): Promise<ConversationContext | null> {
     const conversation = await this.conversationRepo.findById(conversationId);
     if (!conversation) return null;
-    const messages = this.getMessagesForConversation(conversationId);
+    const messages = await this.getMessagesForConversation(conversationId);
     return {
       conversation,
-      messages: await messages,
+      messages,
     };
   }
 
@@ -113,43 +110,24 @@ export class AgentService implements AgentServiceInterface {
    * Adds a message to the conversation (persists to DB).
    */
   async addMessage(
-    conversationId: string,
-    role: "user" | "assistant",
+    conversationId: number,
+    sender: "user" | "assistant",
     content: string
   ): Promise<Message> {
-    const message: Message = {
-      id: crypto.randomUUID(),
+    const messageData = {
       conversationId,
-      role,
+      sender,
       content,
       timestamp: new Date(),
     };
-    // Direct SQL insert (since no MessageRepository exists)
-    const stmt = this.db.prepare(
-      "INSERT INTO messages (id, conversationId, role, content, timestamp) VALUES (?, ?, ?, ?, ?)"
-    );
-    stmt.run(
-      message.id,
-      message.conversationId,
-      message.role,
-      message.content,
-      message.timestamp.toISOString()
-    );
-    return message;
+    return await this.messageRepo.create(messageData);
   }
 
   /**
    * Retrieves all messages for a conversation, ordered by timestamp.
    */
-  async getMessagesForConversation(conversationId: string): Promise<Message[]> {
-    const stmt = this.db.prepare(
-      "SELECT id, conversationId, role, content, timestamp FROM messages WHERE conversationId = ? ORDER BY timestamp ASC"
-    );
-    const rows = stmt.all(conversationId);
-    return rows.map((row: any) => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-    }));
+  async getMessagesForConversation(conversationId: number): Promise<Message[]> {
+    return await this.messageRepo.findByConversation(conversationId);
   }
 
   /**
@@ -161,7 +139,7 @@ export class AgentService implements AgentServiceInterface {
    * - Returns LLM response
    */
   async generateResponse(
-    conversationId: string,
+    conversationId: number,
     templatePrompt: TemplatePrompt
   ): Promise<LLMResponse> {
     const context = await this.getConversationContext(conversationId);
@@ -169,7 +147,7 @@ export class AgentService implements AgentServiceInterface {
 
     // Prepare message history for LLM (trimmed to context window)
     const history: AgentMessage[] = context.messages.map((m) => ({
-      role: m.role,
+      role: m.sender as "user" | "assistant" | "system",
       content: m.content,
       timestamp: m.timestamp,
     }));

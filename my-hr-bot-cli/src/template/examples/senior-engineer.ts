@@ -1,7 +1,7 @@
 import { Template } from "../types";
 
 const seniorEngineerTemplate: Template = {
-  id: "senior-engineer",
+  id: 3,
   name: "Senior Engineer Interview",
   description:
     "Interview template for senior engineering candidates, focusing on leadership, architecture, and advanced problem-solving.",

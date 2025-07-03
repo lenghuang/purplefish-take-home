@@ -1,302 +1,69 @@
-# my-hr-bot-cli
+# HR Bot CLI
 
-A modern, flexible CLI tool for conducting automated HR interviews with advanced template support and conversation management.
+I got a general gist for how these agent things kinda work, going to try messing around with a v0 backend by only using CLI as a frontend. I'm less confident on this part and so I think this will help me iterate more quickly.
 
-## Project Overview
+https://sqlitebrowser.org/dl/
 
-### Purpose and Features
+### Version 0
 
-- Automated interview management through CLI interface
-- Flexible template system for different interview types
-- Conversation persistence and analysis
-- Real-time interview flow control
-- Template customization and inheritance
-- Built-in templates for common roles
+I was able to get some bare bones stuff going!
 
-### Architecture Overview
+![photos/cli.png](photos/cli.png)
+![photos/dbbrowser.png](photos/dbbrowser.png)
 
-The project follows a modular, clean architecture with clear separation of concerns:
+### Version 0.1
 
-```mermaid
-graph TD
-    CLI[CLI Interface] --> Agent[Agent Module]
-    Agent --> LLM[LLM Service]
-    Agent --> Template[Template System]
-    Agent --> DB[Database Service]
-    Template --> Repo[Template Repository]
-    DB --> SQLite[(SQLite Database)]
-```
+Added some basic LLM functionality.
 
-Key components:
+![photos/addingbasicllm.png](photos/addingbasicllm.png)
 
-- **Agent Module**: Manages interview flow and LLM interactions
-- **Template System**: Handles interview templates and customization
-- **Database Service**: Manages persistence and data access
-- **CLI Interface**: Provides user interaction
+### Version 0.5
 
-### Key Improvements Over Original hr-bot-cli
+I plugged back in the v0 code and gave it back to ChatGPT to ask how it might improve, also including the original take-home PDF as context. I asked it to improve the script, still just focusing on CLI as the frontend. With just one shot, I was able to improve the chat bot a decent bit!
 
-1. **Enhanced Template System**
+![photos/zeroshotinterviewagent.png](photos/zeroshotinterviewagent.png)
+![photos/zeroshotinterviewagentdb.png](photos/zeroshotinterviewagentdb.png)
 
-   - Template inheritance support
-   - Version control integration
-   - Runtime validation
-   - Dynamic template loading
+With this, I have a few follow up questions.
 
-2. **Improved Database Schema**
+- How can I design this notion of "steps" to be easily iterable and experimented on? How can I make it customizable for different roles that might need different templates?
 
-   - Better relationship modeling
-   - Efficient indexing
-   - Transaction support
-   - Data export/import capabilities
+- The questions are all hardcoded. How can I make this more customizable, such that staffing agencies can pass in steps but then the LLM can still make sure it checks all these boxes in a natural way?
 
-3. **Robust Error Handling**
+- How can I separate the direct SQL calls away from the functionality, so that the database functionality is decoupled from the agent code?
 
-   - Custom error types
-   - Graceful degradation
-   - Detailed error reporting
-   - Recovery mechanisms
+- I see we have given the agent two methods of sorts -- handle, and prompt. Is this the most common pattern? What else might I include here? What if candidate gives a "not good enough" response? Like how do we negotiate with the candidate? Can we have some like clarify_answer method that runs at most some X amount of times? Then we could generically call this multiple times to get more details. This may be good if a candidate has some "uhh's" over phone call or something.
 
-4. **Type Safety**
-   - Comprehensive TypeScript integration
-   - Runtime type validation
-   - Interface-driven development
+- How do I give a candidate an out to change their answer, or maybe ask for the recrutier to repeat the question?
 
-## Setup Instructions
+### Version 1
 
-### Prerequisites
+I gave all the above as feedback to the LLM, and it went crazy! Writing constructors and very object oriented looking code that I'm not used to seeing in Typescript, but reflected many common C# patterns I see at work. With this in mind, I felt that it could be more extensible to multiple job types, styles of scripts, and more.
 
-- Node.js (v16 or higher)
-- npm or yarn
-- OpenAI API key
+Here's an example of a very simple negotation happening. It could use some work, but it's progress!
 
-### Installation Steps
+![photos/negotiationv1.png](photos/negotiationv1.png)
 
-1. Clone the repository:
+I needed some bug fixes, like deduplicating code, and creating a seed file, but it got VERY far in just a few prompts and $2 worth of Claude Sonnet 3.5 lol.
 
-   ```bash
-   git clone https://github.com/yourusername/my-hr-bot-cli.git
-   cd my-hr-bot-cli
-   ```
+![photos/canyouelaboratev1.png](photos/canyouelaboratev1.png)
 
-2. Install dependencies:
+It didn't seem too happy when I asked for help clarifying what acute care was... oops.
 
-   ```bash
-   npm install
-   ```
+![photos/dbbrowserv1.png](photos/dbbrowserv1.png)
 
-3. Copy environment configuration:
-   ```bash
-   cp .env.sample .env
-   ```
+Finally, the underlying database was a little messy. I think my next steps will be getting this data cleaner. Taking a step back, now that I have this proof of concept built out, how do I want to approach this website?
 
-### Environment Configuration
+I'm thinking:
 
-Configure the following environment variables in `.env`:
+- Frontend that lets you log in as candidate or company
+- Candidate view:
+  - Frontend that lets you pick from a set of jobs to get "screened" for.
+  - Upon picking, that opens up a chat session that interacts with the chat bot.
+- Company view:
+  - Insights dashboard with aggregate stats
+  - View how many people have interviewed so far for each role
+  - Also have view for all candidates (paginated?) to see data specific to them.
+  - We should know how to format them since the template (could/is?) stored somewhere central.
 
-```env
-OPENAI_API_KEY=your_api_key_here
-LLM_MODEL=gpt-4.1-nano  # Optional, defaults to gpt-4.1-nano
-LLM_TEMPERATURE=0.7     # Optional, defaults to 0.7
-DB_FILENAME=hr-bot.db   # Optional, defaults to hr-bot.db
-TEMPLATE_DIR=./templates # Optional, defaults to built-in templates
-```
-
-### Database Setup
-
-The database is automatically initialized on first run. To seed with sample data:
-
-```bash
-npm run cli -- --seed
-```
-
-## Usage Guide
-
-### Basic Usage
-
-1. Start a new interview:
-
-   ```bash
-   npm run cli interview start
-   ```
-
-2. List available templates:
-
-   ```bash
-   npm run cli template list
-   ```
-
-3. View interview history:
-   ```bash
-   npm run cli history
-   ```
-
-### Template Selection and Customization
-
-1. Select a template:
-
-   ```bash
-   npm run cli interview start --template software-engineer
-   ```
-
-2. Use a custom template:
-   ```bash
-   npm run cli interview start --template-path ./my-templates/custom.ts
-   ```
-
-### Available Commands
-
-- `interview`
-
-  - `start`: Start a new interview
-  - `resume`: Resume an existing interview
-  - `list`: List active interviews
-
-- `template`
-
-  - `list`: List available templates
-  - `create`: Create a new template
-  - `validate`: Validate a template
-
-- `history`
-
-  - `list`: View interview history
-  - `export`: Export interview data
-
-- `config`
-  - `show`: Display current configuration
-  - `set`: Update configuration
-
-### Interview Flow Explanation
-
-1. **Template Selection**: Choose or specify an interview template
-2. **Initialization**: System loads template and prepares interview context
-3. **Question Flow**: Follow template-defined interview structure
-4. **Response Processing**: Analyze and store responses
-5. **Outcome Generation**: Generate interview summary and recommendations
-
-## Template Development
-
-### Template Structure
-
-```typescript
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  version: string;
-  steps: Step[];
-  metadata: TemplateMetadata;
-}
-
-interface Step {
-  id: string;
-  type: "question" | "validation" | "branch" | "exit";
-  content: string;
-  conditions?: Condition[];
-  nextSteps: Record<string, string>;
-}
-```
-
-### Creating Custom Templates
-
-1. Create a new TypeScript file in your templates directory
-2. Define your template structure
-3. Export the template configuration
-4. Validate using the CLI tool
-
-Example template:
-
-```typescript
-export const template: Template = {
-  id: "custom-role",
-  name: "Custom Role Interview",
-  description: "Interview template for custom role",
-  version: "1.0.0",
-  steps: [
-    {
-      id: "intro",
-      type: "question",
-      content: "Tell me about your background",
-      nextSteps: { default: "experience" },
-    },
-    // Additional steps...
-  ],
-  metadata: {
-    role: "Custom Role",
-    skills: ["skill1", "skill2"],
-    expectedDuration: 30,
-  },
-};
-```
-
-### Best Practices
-
-1. **Template Organization**
-
-   - Use clear step IDs
-   - Group related questions
-   - Include validation steps
-   - Define clear exit conditions
-
-2. **Content Guidelines**
-
-   - Write clear, concise questions
-   - Include follow-up prompts
-   - Define validation criteria
-   - Add helpful metadata
-
-3. **Flow Control**
-   - Plan question sequences
-   - Handle edge cases
-   - Include recovery paths
-   - Define skip conditions
-
-### Example Templates
-
-The system includes several built-in templates:
-
-1. Software Engineer (`templates/software-engineer.ts`)
-2. Senior Engineer (`templates/senior-engineer.ts`)
-3. ICU Nurse (`templates/icu-nurse.ts`)
-
-## Configuration
-
-### Environment Variables
-
-| Variable        | Description                | Default       |
-| --------------- | -------------------------- | ------------- |
-| OPENAI_API_KEY  | OpenAI API key             | Required      |
-| LLM_MODEL       | LLM model to use           | gpt-4.1-nano  |
-| LLM_TEMPERATURE | LLM temperature            | 0.7           |
-| DB_FILENAME     | Database file path         | hr-bot.db     |
-| TEMPLATE_DIR    | Custom templates directory | Built-in path |
-
-### LLM Settings
-
-- **Model**: Supports OpenAI GPT models
-- **Temperature**: Controls response creativity (0.0-1.0)
-- **Token Limits**: Automatically managed by the system
-- **Error Handling**: Automatic retry with backoff
-
-### Database Configuration
-
-- **Storage**: SQLite database
-- **Migrations**: Automatic schema updates
-- **Backup**: Automatic daily backups
-- **Performance**: Optimized indexes and queries
-
-### Template Configuration
-
-- **Location**: Custom template directory support
-- **Validation**: Automatic template validation
-- **Hot Reload**: Dynamic template updates
-- **Inheritance**: Template extension support
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Candidate view is most important here. I think a full database viewer with some simple UI components is probably enough for "company view" for now.
