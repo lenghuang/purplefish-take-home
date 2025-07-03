@@ -1,31 +1,25 @@
 import { db } from "../client";
 import { templates } from "../schema";
-import { eq } from "drizzle-orm";
+import { RepositoryUtils } from "./base";
 
 export class TemplateRepository {
   async create(data: Omit<typeof templates.$inferInsert, "id">) {
-    const [result] = await db.insert(templates).values(data).returning();
-    return result;
+    return RepositoryUtils.create(templates, data);
   }
 
   async findById(id: number) {
-    return db.query.templates.findFirst({ where: eq(templates.id, id) });
+    return RepositoryUtils.findById(templates, db.query, "templates", id);
   }
 
   async findAll() {
-    return db.select().from(templates);
+    return RepositoryUtils.findAll(templates);
   }
 
   async update(id: number, data: Partial<typeof templates.$inferInsert>) {
-    const [result] = await db
-      .update(templates)
-      .set(data)
-      .where(eq(templates.id, id))
-      .returning();
-    return result;
+    return RepositoryUtils.update(templates, id, data);
   }
 
   async delete(id: number) {
-    await db.delete(templates).where(eq(templates.id, id));
+    return RepositoryUtils.delete(templates, id);
   }
 }

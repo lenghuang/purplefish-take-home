@@ -1,33 +1,25 @@
 import { db } from "../client";
 import { conversations } from "../schema";
-import { eq } from "drizzle-orm";
+import { RepositoryUtils } from "./base";
 
 export class ConversationRepository {
   async create(data: Omit<typeof conversations.$inferInsert, "id">) {
-    const [result] = await db.insert(conversations).values(data).returning();
-    return result;
+    return RepositoryUtils.create(conversations, data);
   }
 
   async findById(id: number) {
-    return db.query.conversations.findFirst({
-      where: eq(conversations.id, id),
-    });
+    return RepositoryUtils.findById(conversations, db.query, "conversations", id);
   }
 
   async findAll() {
-    return db.select().from(conversations);
+    return RepositoryUtils.findAll(conversations);
   }
 
   async update(id: number, data: Partial<typeof conversations.$inferInsert>) {
-    const [result] = await db
-      .update(conversations)
-      .set(data)
-      .where(eq(conversations.id, id))
-      .returning();
-    return result;
+    return RepositoryUtils.update(conversations, id, data);
   }
 
   async delete(id: number) {
-    await db.delete(conversations).where(eq(conversations.id, id));
+    return RepositoryUtils.delete(conversations, id);
   }
 }

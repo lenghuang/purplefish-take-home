@@ -1,22 +1,23 @@
 import { db } from "../client";
 import { messages } from "../schema";
 import { eq } from "drizzle-orm";
+import { RepositoryUtils } from "./base";
 
 export class MessageRepository {
   async create(data: Omit<typeof messages.$inferInsert, "id">) {
-    const [result] = await db.insert(messages).values(data).returning();
-    return result;
+    return RepositoryUtils.create(messages, data);
   }
 
   async findById(id: number) {
-    return db.query.messages.findFirst({ where: eq(messages.id, id) });
+    return RepositoryUtils.findById(messages, db.query, "messages", id);
   }
 
   async findAll() {
-    return db.select().from(messages);
+    return RepositoryUtils.findAll(messages);
   }
 
   async findByConversation(conversationId: number) {
+    // This method has custom logic, so we keep it separate
     return db
       .select()
       .from(messages)
@@ -24,15 +25,10 @@ export class MessageRepository {
   }
 
   async update(id: number, data: Partial<typeof messages.$inferInsert>) {
-    const [result] = await db
-      .update(messages)
-      .set(data)
-      .where(eq(messages.id, id))
-      .returning();
-    return result;
+    return RepositoryUtils.update(messages, id, data);
   }
 
   async delete(id: number) {
-    await db.delete(messages).where(eq(messages.id, id));
+    return RepositoryUtils.delete(messages, id);
   }
 }
