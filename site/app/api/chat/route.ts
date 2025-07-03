@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai"
-import { streamText } from "ai" // Reverted to use streamText for proper AI SDK integration
+import { streamText } from "ai"
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30
