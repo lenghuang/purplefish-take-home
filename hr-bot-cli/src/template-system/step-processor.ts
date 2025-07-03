@@ -164,7 +164,7 @@ export class StepProcessor {
     }
 
     // Validate against each condition
-    step.conditions.forEach((condition) => {
+    step.conditions?.forEach((condition) => {
       const validationError = this.validateCondition(condition, response);
       if (validationError) {
         errors.push(validationError);
@@ -294,16 +294,18 @@ export class StepProcessor {
    */
   private evaluateConditions(step: Step, response: string): string {
     // Check each condition in order
-    for (const condition of step.conditions) {
+    for (const condition of step.conditions ?? []) {
       const matches = this.checkCondition(condition, response);
       if (matches) {
         // Return the outcome if condition matches
-        return step.nextSteps[condition.outcome] || step.nextSteps.default;
+        return (
+          step.nextSteps?.[condition.outcome] ?? step.nextSteps?.default ?? ""
+        );
       }
     }
 
     // Return default next step if no conditions match
-    return step.nextSteps.default;
+    return step.nextSteps?.default ?? "";
   }
 
   /**

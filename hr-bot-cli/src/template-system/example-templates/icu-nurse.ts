@@ -10,6 +10,7 @@ export const icuNurseTemplate: Template = {
       id: "interest_check",
       type: "question",
       content: "Hello! Are you currently open to discussing this role?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -34,6 +35,7 @@ export const icuNurseTemplate: Template = {
       id: "name",
       type: "question",
       content: "Great! What's your name?",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "position",
@@ -47,6 +49,7 @@ export const icuNurseTemplate: Template = {
       id: "position",
       type: "question",
       content: "What position are you applying for?",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "salary",
@@ -60,6 +63,7 @@ export const icuNurseTemplate: Template = {
       id: "salary",
       type: "validation",
       content: "What is your desired salary?",
+      availableTools: [],
       conditions: [
         {
           type: "numeric",
@@ -84,6 +88,7 @@ export const icuNurseTemplate: Template = {
       id: "salary_negotiation",
       type: "question",
       content: "The max pay is $72,000. Does that work for you?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -108,6 +113,7 @@ export const icuNurseTemplate: Template = {
       id: "license",
       type: "question",
       content: "Are you a licensed RN in this state?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -132,6 +138,7 @@ export const icuNurseTemplate: Template = {
       id: "license_timing",
       type: "validation",
       content: "When (in months) do you expect to get licensed?",
+      availableTools: [],
       conditions: [
         {
           type: "numeric",
@@ -156,6 +163,7 @@ export const icuNurseTemplate: Template = {
       id: "experience_years",
       type: "question",
       content: "Do you have at least 2 years of ICU experience?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -181,6 +189,7 @@ export const icuNurseTemplate: Template = {
       type: "question",
       content:
         "Tell me about a challenging ICU emergency and how you handled it.",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "ending",
@@ -194,6 +203,7 @@ export const icuNurseTemplate: Template = {
       id: "experience_acute",
       type: "question",
       content: "Do you have any acute‑care experience?",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "ending",
@@ -207,6 +217,7 @@ export const icuNurseTemplate: Template = {
       id: "ending",
       type: "question",
       content: "Thanks for your time! We'll be in touch soon.",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "exit",
@@ -220,6 +231,7 @@ export const icuNurseTemplate: Template = {
       id: "exit",
       type: "exit",
       content: "",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "exit",

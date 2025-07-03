@@ -2,6 +2,8 @@ import { config } from "dotenv";
 import * as readline from "readline";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage } from "@langchain/core/messages";
+import { initializeAgentExecutorWithOptions } from "langchain/agents";
+import { Tool } from "langchain/tools";
 
 import { DatabaseService } from "./src/database/database-service";
 import { TemplateManager } from "./src/template-system/template-manager";
@@ -9,20 +11,18 @@ import { InteractionManager } from "./src/template-system/interaction/interactio
 import { Template, Step } from "./src/template-system/types";
 import { Interview } from "./src/database/types";
 import { icuNurseTemplate } from "./src/template-system/example-templates/icu-nurse";
+import { ToolRegistry } from "./src/template-system/tool-registry";
 
-// ────────────────────────────────────────────────────────────────────────────
-//  1. Environment
-// ────────────────────────────────────────────────────────────────────────────
 config(); // loads .env → process.env
 
-// ────────────────────────────────────────────────────────────────────────────
-//  2. InterviewAgent class
-// ────────────────────────────────────────────────────────────────────────────
 class InterviewAgent {
-  private currentStep: Step;
-  private ctx: Record<string, any> = {};
+  private conversationHistory: {
+    role: "user" | "assistant";
+    content: string;
+  }[] = [];
   private interviewId!: string;
   private template: Template;
+  private toolRegistry: ToolRegistry;
 
   constructor(
     private templateManager: TemplateManager,
@@ -37,7 +37,11 @@ class InterviewAgent {
       throw new Error(`Template ${templateId} not found`);
     }
     this.template = template;
-    this.currentStep = template.steps[0];
+    this.toolRegistry = new ToolRegistry();
+
+    if (!this.llm) {
+      throw new Error("LLM instance is required for InterviewAgent");
+    }
   }
 
   async start() {
@@ -47,7 +51,7 @@ class InterviewAgent {
       templateId: this.template.id,
       userId: this.userId,
       status: "active",
-      currentStepId: this.currentStep.id,
+      currentStepId: this.template.steps[0].id,
       metadata: {},
       startedAt: new Date(),
     } as Interview);
@@ -56,104 +60,104 @@ class InterviewAgent {
   }
 
   finished() {
-    return this.currentStep.type === "exit";
+    // End when the LLM or conversation signals it, or when a special step is reached.
+    // For now, always return false to allow the LLM to control the flow.
+    return false;
   }
 
-  /** Optionally paraphrase prompt with the LLM for warmth. */
-  private async phrase(content: string) {
-    if (!this.llm) return content;
-    try {
-      const r = await this.llm.invoke([
-        new HumanMessage(
-          `Rephrase this interview question in a warm, human voice: ${content}`
-        ),
-      ]);
-      return r.content as string;
-    } catch {
-      return content;
-    }
-  }
-
-  /** Ask the current question. */
+  /** Get the initial prompt for the interview. */
   async prompt(): Promise<string> {
-    if (this.finished()) return "";
-    return this.phrase(this.currentStep.content);
+    const firstStep = this.template.steps[0];
+    this.conversationHistory.push({
+      role: "assistant",
+      content: firstStep.content,
+    });
+    return firstStep.content;
   }
 
-  /** Handle candidate input, advance state, log to DB, return next bot message. */
+  /** Handle candidate input, process with LLM+tools, log to DB, return next bot message. */
   async handle(input: string): Promise<string> {
-    if (this.finished()) return "";
-
-    const currentStep = this.currentStep;
-
-    // Process conditions to determine next step
-    let nextStepId = currentStep.nextSteps.default;
-    for (const condition of currentStep.conditions) {
-      if (
-        condition.type === "regex" &&
-        new RegExp(condition.value, "i").test(input)
-      ) {
-        nextStepId = condition.outcome;
-        break;
-      } else if (condition.type === "numeric") {
-        const num = Number(input.replace(/[^0-9]/g, ""));
-        if (!Number.isNaN(num)) {
-          const [op, val] =
-            condition.value.match(/([<=>]+)(\d+)/)?.slice(1) || [];
-          const targetVal = Number(val);
-          if (op === "<=" && num <= targetVal) {
-            nextStepId = condition.outcome;
-            break;
-          }
-        }
-      }
-    }
-
-    // Store response
-    const interviewRepo = this.databaseService.getInterviewRepository();
+    // Save user response
     const responseRepo = this.databaseService.getInterviewRepository();
-
-    // Update current step
-    this.currentStep = this.template.steps.find((s) => s.id === nextStepId)!;
-
-    // Get next message
-    const botMsg = await this.prompt();
-
-    // Save response
     await responseRepo.saveResponse(this.interviewId, {
-      stepId: currentStep.id,
+      stepId: "dynamic", // No longer step-based, mark as dynamic
       response: input,
       metadata: {},
     });
 
-    // Update interview status if finished
-    if (this.finished()) {
-      await interviewRepo.update(this.interviewId, {
-        status: "completed",
-        currentStepId: this.currentStep.id,
-        completedAt: new Date(),
+    this.conversationHistory.push({ role: "user", content: input });
+
+    // Get available tools for the current context (all tools for now)
+    const tools = this.toolRegistry.getAllTools();
+
+    // Compose LLM prompt: include history and available tools
+    const prompt = [
+      ...(this.conversationHistory ?? []).map(
+        (msg) => `${msg.role === "user" ? "User" : "Bot"}: ${msg.content}`
+      ),
+      `Available tools: ${tools
+        .map((t) => `${t.name}: ${t.description}`)
+        .join("; ")}`,
+      'If you need to use a tool, respond with: TOOL_CALL {"tool": "ToolName", "input": { ... }}. Otherwise, respond to the user directly.',
+    ].join("\n");
+
+    // Send to LLM
+    const llmResponse = await this.llm!.invoke([new HumanMessage(prompt)]);
+    let content = llmResponse.content as string;
+
+    // Tool call loop: if LLM requests a tool, execute and send result back, repeat until LLM responds directly
+    let toolCallMatch = content.match(/TOOL_CALL\s*({.*})/);
+    while (toolCallMatch) {
+      let toolCall;
+      try {
+        toolCall = JSON.parse(toolCallMatch[1]);
+      } catch {
+        break;
+      }
+      const tool = this.toolRegistry.getTool(toolCall.tool);
+      let toolResult = "";
+      if (tool) {
+        try {
+          toolResult = await tool.execute(toolCall.input);
+        } catch (e) {
+          toolResult = `Tool error: ${e}`;
+        }
+      } else {
+        toolResult = `Tool "${toolCall?.tool ?? "unknown"}" not found.`;
+      }
+      // Add tool result to history and prompt LLM again
+      this.conversationHistory.push({
+        role: "assistant",
+        content: `Tool result: ${toolResult}`,
       });
-    } else {
-      await interviewRepo.update(this.interviewId, {
-        currentStepId: this.currentStep.id,
-      });
+      const followupPrompt = [
+        ...this.conversationHistory.map(
+          (msg) => `${msg.role === "user" ? "User" : "Bot"}: ${msg.content}`
+        ),
+        `Available tools: ${tools
+          .map((t) => `${t.name}: ${t.description}`)
+          .join("; ")}`,
+        'If you need to use a tool, respond with: TOOL_CALL {"tool": "ToolName", "input": { ... }}. Otherwise, respond to the user directly.',
+      ].join("\n");
+      const followupResponse = await this.llm!.invoke([
+        new HumanMessage(followupPrompt),
+      ]);
+      content = followupResponse.content as string;
+      toolCallMatch = content.match(/TOOL_CALL\s*({.*})/);
     }
 
-    return botMsg;
+    // Add LLM response to history
+    this.conversationHistory.push({ role: "assistant", content });
+
+    // Optionally update interview status if a special end message is detected
+    // (You may want to add logic here for "exit" or "goodbye" detection)
+
+    return content;
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-//  3. CLI runner
-// ────────────────────────────────────────────────────────────────────────────
-async function main() {
-  // Initialize components
-  const dbService = new DatabaseService({
-    filename: "./interview_bot.db",
-  });
-  await dbService.initialize();
-
-  // choose a job
+const main = async () => {
+  const dbService = new DatabaseService({ filename: "hr-bot.db" }); // Provide required filename config
   const interviewTemplate = icuNurseTemplate;
 
   // load it into the manager
@@ -197,6 +201,6 @@ async function main() {
     dbService.close();
     console.log("Interview finished. Goodbye!");
   });
-}
+};
 
-main().catch(console.error);
+main();

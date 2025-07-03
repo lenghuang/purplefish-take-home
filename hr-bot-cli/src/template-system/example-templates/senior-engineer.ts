@@ -26,6 +26,7 @@ export const seniorEngineerTemplate: Template = {
       type: "question" as StepType,
       content:
         "Design a scalable real-time chat system that can handle millions of concurrent users. Include considerations for data storage, message delivery, and handling peak loads.",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "architecture-tradeoffs",
@@ -54,6 +55,7 @@ export const seniorEngineerTemplate: Template = {
       type: "validation" as StepType,
       content:
         "Explain the key architectural trade-offs you considered in your design. What alternatives did you evaluate and why did you choose your proposed solution?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -90,6 +92,7 @@ export const seniorEngineerTemplate: Template = {
       type: "question" as StepType,
       content:
         "Describe a situation where you had to lead a team through a significant technical challenge. How did you handle disagreements and ensure the team remained productive?",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "exit",
@@ -116,6 +119,7 @@ export const seniorEngineerTemplate: Template = {
       type: "exit" as StepType,
       content:
         "Thank you for completing the interview. We'll evaluate your responses and get back to you soon.",
+      availableTools: [],
       conditions: [],
       nextSteps: {},
       metadata: {

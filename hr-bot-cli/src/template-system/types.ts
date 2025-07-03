@@ -18,9 +18,17 @@ export interface Step {
   id: string;
   type: StepType;
   content: string;
-  conditions: Condition[];
-  nextSteps: Record<string, string>;
+  availableTools: string[];
   metadata: StepMetadata;
+  /**
+   * Optional array of conditions for branching or validation.
+   */
+  conditions?: Condition[];
+  /**
+   * Mapping of possible next step IDs, e.g. { "yes": "step2", "no": "step3" }
+   * Only present for steps that branch or have multiple outcomes.
+   */
+  nextSteps?: Record<string, string>;
 }
 
 export type StepType = "question" | "validation" | "branch" | "exit";

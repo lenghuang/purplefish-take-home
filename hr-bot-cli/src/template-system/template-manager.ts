@@ -152,7 +152,7 @@ export class TemplateManager {
 
     // Check all nextStep references are valid
     steps.forEach((step) => {
-      Object.values(step.nextSteps).forEach((nextStepId) => {
+      Object.values(step.nextSteps ?? {}).forEach((nextStepId) => {
         if (nextStepId !== "exit" && !stepIds.has(nextStepId)) {
           throw new TemplateValidationError(
             `Invalid next step reference: ${nextStepId}`
@@ -168,7 +168,7 @@ export class TemplateManager {
 
       const step = steps.find((s) => s.id === stepId);
       if (step) {
-        Object.values(step.nextSteps).forEach((nextStepId) => {
+        Object.values(step.nextSteps ?? {}).forEach((nextStepId) => {
           if (nextStepId !== "exit") {
             if (!visited.has(nextStepId)) {
               checkCircular(nextStepId);

@@ -145,6 +145,7 @@ export class SQLiteTemplateRepository
         id: step.id,
         type: step.type as "question" | "validation" | "branch" | "exit",
         content: step.content,
+        availableTools: [],
         conditions: JSON.parse(step.conditions),
         nextSteps: JSON.parse(step.next_steps),
         metadata: JSON.parse(step.metadata),

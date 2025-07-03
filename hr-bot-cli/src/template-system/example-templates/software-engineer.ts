@@ -11,6 +11,7 @@ export const softwareEngineerTemplate: Template = {
       type: "question",
       content:
         "Are you currently open to discussing software engineering opportunities?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -37,6 +38,7 @@ export const softwareEngineerTemplate: Template = {
       type: "validation",
       content:
         "How many years of professional software development experience do you have?",
+      availableTools: [],
       conditions: [
         {
           type: "numeric",
@@ -66,6 +68,7 @@ export const softwareEngineerTemplate: Template = {
       type: "validation",
       content:
         "Which of the following technologies have you worked with professionally: React, Node.js, TypeScript, Python?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -94,6 +97,7 @@ export const softwareEngineerTemplate: Template = {
       type: "validation",
       content:
         "What are your salary expectations for this role? (Please provide a number)",
+      availableTools: [],
       conditions: [
         {
           type: "numeric",
@@ -123,6 +127,7 @@ export const softwareEngineerTemplate: Template = {
       type: "question",
       content:
         "Great! Would you be available for a technical interview in the next week?",
+      availableTools: [],
       conditions: [
         {
           type: "regex",
@@ -148,6 +153,7 @@ export const softwareEngineerTemplate: Template = {
       type: "exit",
       content:
         "Thank you for your time. We understand you're not interested at this moment.",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "exit",
@@ -162,6 +168,7 @@ export const softwareEngineerTemplate: Template = {
       type: "exit",
       content:
         "Thank you for your time! Our team will be in touch with technical interview details.",
+      availableTools: [],
       conditions: [],
       nextSteps: {
         default: "exit",
