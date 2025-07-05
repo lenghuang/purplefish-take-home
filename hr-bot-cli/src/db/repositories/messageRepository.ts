@@ -1,5 +1,5 @@
 import { messages } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { RepositoryUtils } from "./base";
 
 /**
@@ -63,84 +63,58 @@ export class MessageRepository {
       stepId: string;
     }[]
   > {
-    console.log("[getQuestionAnswerPairs]", { conversationId, stepId });
-
-    // Log all messages for this conversation (and step, if provided)
-    const allMessages = await this.db
-      .select()
-      .from(messages)
-      .where(
-        stepId !== undefined
-          ? and(
-              eq(messages.conversationId, conversationId),
-              eq(messages.stepId, stepId)
-            )
-          : eq(messages.conversationId, conversationId)
-      );
-    console.log(
-      "[getQuestionAnswerPairs] All messages for conversation:",
-      allMessages.map((m: any) => ({
-        id: m.id,
-        sender: m.sender,
-        content: m.content,
-        stepId: m.stepId,
-        timestamp: m.timestamp,
-      }))
-    );
-
-    // Use raw SQL for efficient pairing logic.
-    // This query is fully compatible with SQLite (LEFT JOIN, NOT EXISTS, parameterization, and string escaping reviewed).
-    // String literals use single quotes, and the query string uses double quotes (template literal).
-    // If you change the schema or migrate to another DB, review this query for compatibility.
-    // Directly inject params into SQL string using template literals.
-    // WARNING: This disables SQL parameterization for conversationId and stepId.
-    // Make sure these values are trusted and properly escaped.
-    let stepFilter = "";
-    if (stepId !== undefined) {
-      // Escape single quotes in stepId to prevent SQL injection
-      const safeStepId = stepId.replace(/'/g, "''");
-      stepFilter = `AND m1.step_id = '${safeStepId}'`;
-    }
-
-    const sql = `
-      SELECT
-        m1.id AS questionId,
-        m1.content AS question,
-        m2.id AS answerId,
-        m2.content AS answer,
-        m1.step_id AS stepId
-      FROM messages m1
-      LEFT JOIN messages m2
-        ON m2.conversation_id = m1.conversation_id
-        AND ((m2.step_id = m1.step_id) OR (m2.step_id IS NULL AND m1.step_id IS NULL))
-        AND m2.sender = 'user'
-        AND m2.id > m1.id
-      WHERE m1.conversation_id = ${conversationId}
-        AND m1.sender = 'assistant'
-        ${stepFilter}
-      ORDER BY m1.step_id, m1.id
-    `;
-
+    // Strict 1:1 Q/A pairing: fetch assistants and users separately, zip in JS
     try {
-      // Use Drizzle ORM's raw SQL execution for better-sqlite3: use .run
-      const result = await this.db.run(sql);
-      // Drizzle's run returns { rows: [...] }
-      const rows = result?.rows ?? [];
-
-      console.log("[getQuestionAnswerPairs]", { result, rows, sql });
-      if (rows?.length <= 0) {
-        return [];
+      // Fetch assistant messages
+      const assistantWhere = [
+        sql`conversation_id = ${conversationId}`,
+        sql`sender = 'assistant'`,
+      ];
+      if (stepId !== undefined) {
+        assistantWhere.push(sql`step_id = ${stepId}`);
       }
+      const assistants = await this.db
+        .select({
+          id: sql`id`,
+          content: sql`content`,
+          stepId: sql`step_id`,
+        })
+        .from(sql`messages`)
+        .where(and(...assistantWhere))
+        .orderBy(sql`id`);
 
-      return rows.map((row: any) => ({
-        questionId: row.questionId,
-        question: row.question,
-        answerId: row.answerId ?? null,
-        answer: row.answer ?? null,
-        stepId: row.stepId,
-      }));
+      // Fetch user messages
+      const userWhere = [
+        sql`conversation_id = ${conversationId}`,
+        sql`sender = 'user'`,
+      ];
+      if (stepId !== undefined) {
+        userWhere.push(sql`step_id = ${stepId}`);
+      }
+      const users = await this.db
+        .select({
+          id: sql`id`,
+          content: sql`content`,
+          stepId: sql`step_id`,
+        })
+        .from(sql`messages`)
+        .where(and(...userWhere))
+        .orderBy(sql`id`);
+
+      // Zip assistant and user messages
+      const minLen = Math.min(assistants.length, users.length);
+      const pairs = [];
+      for (let i = 0; i < minLen; i++) {
+        pairs.push({
+          questionId: assistants[i].id,
+          question: assistants[i].content,
+          answerId: users[i].id,
+          answer: users[i].content,
+          stepId: assistants[i].stepId,
+        });
+      }
+      return pairs;
     } catch (error: any) {
-      // Optionally, rethrow to ensure CLI displays the error
       throw new Error(
         `Database query failed in getQuestionAnswerPairs: ${
           error?.message || error

@@ -53,7 +53,7 @@ async function main() {
       const [conversation] = await db
         .insert(conversations)
         .values({
-          userId: "user-1",
+          userId: "user-123",
           templateId: template.id,
           startedAt: new Date(),
         })
@@ -83,7 +83,7 @@ async function main() {
     const [firstTemplate] = await db.select().from(templates).limit(1);
     if (firstTemplate) {
       await db.insert(userTemplateSelection).values({
-        userId: "user-1",
+        userId: "user-123",
         templateId: firstTemplate.id,
         selectedAt: new Date(),
       });

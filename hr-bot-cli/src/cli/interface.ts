@@ -3,6 +3,27 @@ import { Template } from "../template/types";
 import { db } from "../db/client";
 import { MessageRepository } from "../db/repositories/messageRepository";
 
+// Optional color/bold support (chalk if available)
+let chalk: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  chalk = require("chalk");
+} catch {
+  chalk = null;
+}
+function bold(str: string) {
+  return chalk ? chalk.bold(str) : str;
+}
+function cyan(str: string) {
+  return chalk ? chalk.cyan(str) : str;
+}
+function yellow(str: string) {
+  return chalk ? chalk.yellow(str) : str;
+}
+function green(str: string) {
+  return chalk ? chalk.green(str) : str;
+}
+
 export interface CLIOptions {
   templates: Template[];
   onTemplateSelected: (template: Template) => Promise<void>;
@@ -49,13 +70,13 @@ export class CLIInterface {
   }
 
   async showConversationHistory(conversationId: number) {
-    console.log("\n--- Conversation Q/A Pairs ---");
+    console.log("\n" + bold("==== Conversation Q/A Pairs ===="));
     const messageRepo = new MessageRepository(db);
     const pairs = await messageRepo.getQuestionAnswerPairs(conversationId);
 
     if (pairs.length === 0) {
-      console.log("No Q/A pairs found for this conversation.");
-      console.log("---------------------------\n");
+      console.log(yellow("No Q/A pairs found for this conversation."));
+      console.log(bold("==============================\n"));
       return;
     }
 
@@ -66,18 +87,33 @@ export class CLIInterface {
       grouped[pair.stepId].push(pair);
     }
 
-    for (const stepId of Object.keys(grouped)) {
-      console.log(`\nStep: ${stepId}`);
+    const stepIds = Object.keys(grouped).sort();
+
+    for (const [i, stepId] of stepIds.entries()) {
+      if (i > 0) {
+        // Separator between steps
+        console.log(bold("--------------------"));
+      }
+      console.log(bold(`\nStep: ${stepId}`));
       grouped[stepId].forEach(({ question, answer }, idx) => {
-        console.log(`  Q${idx + 1}: ${question}`);
+        if (idx > 0) {
+          // Spacing between Q/A pairs
+          console.log("");
+        }
+        // Q label
+        const qLabel = bold(cyan(`Q${idx + 1}:`));
+        // A label
+        const aLabel = bold(green(`A${idx + 1}:`));
+        console.log(`  ${qLabel} ${question}`);
         if (answer !== null) {
-          console.log(`  A${idx + 1}: ${answer}`);
+          console.log(`  ${aLabel} ${answer}`);
         } else {
-          console.log(`  A${idx + 1}: [No answer]`);
+          console.log(`  ${aLabel} ${yellow("[No answer]")}`);
         }
       });
+      console.log(""); // Extra space after each step
     }
-    console.log("---------------------------\n");
+    console.log(bold("==============================\n"));
   }
 
   showProgress(current: number, total: number) {
