@@ -35,6 +35,7 @@ export class CLIInterface {
   private conversationHistory: {
     role: "user" | "assistant";
     content: string;
+    stepId: string;
   }[] = [];
   private progress: { current: number; total: number } = {
     current: 0,
@@ -121,8 +122,12 @@ export class CLIInterface {
     console.log(`Progress: Step ${current} of ${total}`);
   }
 
-  addMessage(role: "user" | "assistant", content: string) {
-    this.conversationHistory.push({ role, content });
+  addMessage(
+    role: "user" | "assistant",
+    content: string,
+    stepId: string = "other"
+  ) {
+    this.conversationHistory.push({ role, content, stepId });
     if (role === "assistant") {
       console.log(`\nBot: ${content}`);
     } else {

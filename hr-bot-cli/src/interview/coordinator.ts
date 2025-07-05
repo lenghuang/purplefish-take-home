@@ -137,17 +137,30 @@ export class InterviewCoordinator {
         ? firstPrompt
         : "Let's get started!";
 
-    this.cli.addMessage("assistant", promptToShow);
+    // Determine stepId for initial prompt
+    let stepId = "other";
+    const template = this.templateManager.getTemplate(templateId);
+    if (template && template.steps && template.steps[stepIndex]) {
+      stepId = template.steps[stepIndex].id;
+    }
+
+    this.cli.addMessage("assistant", promptToShow, stepId);
     await this.agentService.addMessage(
       conversationId,
       "assistant",
-      promptToShow
+      promptToShow,
+      stepId
     );
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
     const userInput = await this.cli.promptUser("Your response");
-    this.cli.addMessage("user", userInput);
-    await this.agentService.addMessage(conversationId, "user", userInput);
+    this.cli.addMessage("user", userInput, stepId);
+    await this.agentService.addMessage(
+      conversationId,
+      "user",
+      userInput,
+      stepId
+    );
   }
 
   /**
@@ -172,17 +185,29 @@ export class InterviewCoordinator {
       systemPrompt,
     };
 
+    // Retrieve the template and stepId for correct message association
+    const template = this.templateManager.getTemplate(templateId);
+    let stepId = "other";
+    if (template && template.steps && template.steps[stepIndex]) {
+      stepId = template.steps[stepIndex].id;
+    }
     const llmResponse = await this.agentService.generateResponse(
       conversationId,
-      templatePrompt
+      templatePrompt,
+      stepId
     );
 
-    this.cli.addMessage("assistant", llmResponse.content);
+    this.cli.addMessage("assistant", llmResponse.content, stepId);
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
     const userInput = await this.cli.promptUser("Your response");
-    this.cli.addMessage("user", userInput);
-    await this.agentService.addMessage(conversationId, "user", userInput);
+    this.cli.addMessage("user", userInput, stepId);
+    await this.agentService.addMessage(
+      conversationId,
+      "user",
+      userInput,
+      stepId
+    );
   }
 }
 

@@ -35,12 +35,14 @@ export interface AgentServiceInterface {
   addMessage(
     conversationId: number,
     sender: "user" | "assistant",
-    content: string
+    content: string,
+    stepId: string
   ): Promise<Message>;
   getMessagesForConversation(conversationId: number): Promise<Message[]>;
   generateResponse(
     conversationId: number,
-    templatePrompt: TemplatePrompt
+    templatePrompt: TemplatePrompt,
+    stepId: string
   ): Promise<LLMResponse>;
   callLLM(messages: AgentMessage[]): Promise<any>;
 }
@@ -159,7 +161,8 @@ export class AgentService implements AgentServiceInterface {
    */
   async generateResponse(
     conversationId: number,
-    templatePrompt: TemplatePrompt
+    templatePrompt: TemplatePrompt,
+    stepId: string
   ): Promise<LLMResponse> {
     const context = await this.getConversationContext(conversationId);
     if (!context) throw new Error("Conversation not found");
@@ -186,7 +189,12 @@ export class AgentService implements AgentServiceInterface {
 
     // Parse and persist the assistant's response
     const llmResponse = parseLLMResponse(rawResponse);
-    await this.addMessage(conversationId, "assistant", llmResponse.content);
+    await this.addMessage(
+      conversationId,
+      "assistant",
+      llmResponse.content,
+      stepId
+    );
 
     return llmResponse;
   }

@@ -88,7 +88,7 @@ describe("AgentService - Characterization Tests", () => {
         .fn()
         .mockResolvedValue(mockMessage);
 
-      const result = await agentService.addMessage(1, "user", "Hello");
+      const result = await agentService.addMessage(1, "user", "Hello", "other");
 
       expect(agentService["messageRepo"].create).toHaveBeenCalledWith({
         conversationId: 1,
