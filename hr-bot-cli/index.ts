@@ -45,8 +45,12 @@ async function handleTemplateSelection(cli: CLIInterface, templates: any[], temp
 
   // User ID (stub, could be replaced with auth)
   const userId = "user123";
-  await templateManager.selectTemplate(selectedTemplate.id);
-  await templateManager.saveSelectionToDatabase(userId);
+  
+  // Atomic operation - no temporal coupling
+  const success = await templateManager.selectAndSaveTemplate(selectedTemplate.id, userId);
+  if (!success) {
+    throw new Error(`Failed to select template ${selectedTemplate.id}`);
+  }
 
   return { selectedTemplate, userId };
 }

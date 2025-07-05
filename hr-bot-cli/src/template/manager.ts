@@ -132,14 +132,29 @@ export class TemplateManager {
   }
 
   /**
-   * Selects a template by id.
+   * Atomically selects a template and saves the selection to database.
+   * This prevents temporal coupling issues.
    */
-  selectTemplate(templateId: TemplateId): boolean {
-    if (this.templates.has(templateId)) {
-      this.selectionState.selectedTemplateId = templateId;
-      return true;
+  async selectAndSaveTemplate(
+    templateId: TemplateId,
+    userId: string
+  ): Promise<boolean> {
+    if (!this.templates.has(templateId)) {
+      return false;
     }
-    return false;
+
+    // Update in-memory state
+    this.selectionState.selectedTemplateId = templateId;
+
+    // Persist to database atomically
+    try {
+      await this.saveSelectionToDatabase(userId);
+      return true;
+    } catch (error) {
+      // Rollback in-memory state on database failure
+      this.selectionState.selectedTemplateId = null;
+      throw error;
+    }
   }
 
   /**
@@ -151,15 +166,26 @@ export class TemplateManager {
   }
 
   /**
-   * Provides a prompt for the agent for the current step of the selected template.
+   * Provides a prompt for a specific template and step.
+   * This method doesn't depend on internal state, eliminating temporal coupling.
    */
-  getPromptForStep(
+  getPromptForTemplateStep(
+    templateId: TemplateId,
     stepIndex: number,
     previousAnswers?: Record<string, any>
   ): string | null {
-    const tpl = this.getSelectedTemplate();
-    if (!tpl || stepIndex < 0 || stepIndex >= tpl.steps.length) return null;
-    return generatePrompt(tpl, stepIndex, previousAnswers);
+    const template = this.templates.get(templateId);
+    if (!template || stepIndex < 0 || stepIndex >= template.steps.length) {
+      return null;
+    }
+    return generatePrompt(template, stepIndex, previousAnswers);
+  }
+
+  /**
+   * Gets a template by ID without affecting internal state.
+   */
+  getTemplate(templateId: TemplateId): Template | null {
+    return this.templates.get(templateId) || null;
   }
 
   /**

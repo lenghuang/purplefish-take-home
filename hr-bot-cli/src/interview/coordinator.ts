@@ -1,7 +1,7 @@
-import { AgentService, AgentServiceInterface } from '../agent/service';
-import { CLIInterface } from '../cli/interface';
-import TemplateManager from '../template/manager';
-import { Template } from '../template/types';
+import { AgentService, AgentServiceInterface } from "../agent/service";
+import { CLIInterface } from "../cli/interface";
+import TemplateManager from "../template/manager";
+import { Template } from "../template/types";
 
 export interface InterviewCoordinatorDependencies {
   templateManager: TemplateManager;
@@ -31,8 +31,10 @@ export class InterviewCoordinator {
       const selectedTemplate = await this.cli.selectTemplateDropdown(templates);
 
       // Set up template context
-      await this.templateManager.selectTemplate(selectedTemplate.id);
-      await this.templateManager.saveSelectionToDatabase(userId);
+      await this.templateManager.selectAndSaveTemplate(
+        selectedTemplate.id,
+        userId
+      );
 
       // Initialize conversation
       const conversation = await this.agentService.initializeConversation(
@@ -45,7 +47,7 @@ export class InterviewCoordinator {
 
       // Finish interview
       this.cli.showConversationHistory();
-      this.cli.exit('Interview finished. Goodbye!');
+      this.cli.exit("Interview finished. Goodbye!");
     } catch (err) {
       this.cli.handleError(err);
     }
@@ -71,7 +73,7 @@ export class InterviewCoordinator {
 
       // Finish interview
       this.cli.showConversationHistory();
-      this.cli.exit('Interview finished. Goodbye!');
+      this.cli.exit("Interview finished. Goodbye!");
     } catch (err) {
       this.cli.handleError(err);
     }
@@ -95,14 +97,19 @@ export class InterviewCoordinator {
     const totalSteps = selectedTemplate.steps.length;
 
     // Handle first question
-    await this.handleFirstQuestion(conversationId, stepIndex, totalSteps);
+    await this.handleFirstQuestion(
+      conversationId,
+      selectedTemplate.id,
+      stepIndex,
+      totalSteps
+    );
     stepIndex++;
 
     // Handle subsequent questions
     while (!finished && stepIndex < totalSteps) {
       await this.handleSubsequentQuestion(
         conversationId,
-        selectedTemplate,
+        selectedTemplate.id,
         stepIndex,
         totalSteps,
         systemPrompt
@@ -117,21 +124,30 @@ export class InterviewCoordinator {
    */
   private async handleFirstQuestion(
     conversationId: number,
+    templateId: number,
     stepIndex: number,
     totalSteps: number
   ): Promise<void> {
-    const firstPrompt = this.templateManager.getPromptForStep(stepIndex);
-    const promptToShow = (typeof firstPrompt === 'string' && firstPrompt) 
-      ? firstPrompt 
-      : "Let's get started!";
+    const firstPrompt = this.templateManager.getPromptForTemplateStep(
+      templateId,
+      stepIndex
+    );
+    const promptToShow =
+      typeof firstPrompt === "string" && firstPrompt
+        ? firstPrompt
+        : "Let's get started!";
 
-    this.cli.addMessage('assistant', promptToShow);
-    await this.agentService.addMessage(conversationId, 'assistant', promptToShow);
+    this.cli.addMessage("assistant", promptToShow);
+    await this.agentService.addMessage(
+      conversationId,
+      "assistant",
+      promptToShow
+    );
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
-    const userInput = await this.cli.promptUser('Your response');
-    this.cli.addMessage('user', userInput);
-    await this.agentService.addMessage(conversationId, 'user', userInput);
+    const userInput = await this.cli.promptUser("Your response");
+    this.cli.addMessage("user", userInput);
+    await this.agentService.addMessage(conversationId, "user", userInput);
   }
 
   /**
@@ -139,17 +155,20 @@ export class InterviewCoordinator {
    */
   private async handleSubsequentQuestion(
     conversationId: number,
-    selectedTemplate: Template,
+    templateId: number,
     stepIndex: number,
     totalSteps: number,
     systemPrompt: string
   ): Promise<void> {
-    const prompt = this.templateManager.getPromptForStep(stepIndex);
-    
+    const prompt = this.templateManager.getPromptForTemplateStep(
+      templateId,
+      stepIndex
+    );
+
     const templatePrompt = {
-      templateId: selectedTemplate.id,
+      templateId: templateId,
       variables: {},
-      userPrompt: prompt || '',
+      userPrompt: prompt || "",
       systemPrompt,
     };
 
@@ -157,14 +176,18 @@ export class InterviewCoordinator {
       conversationId,
       templatePrompt
     );
-    
-    this.cli.addMessage('assistant', llmResponse.content);
-    await this.agentService.addMessage(conversationId, 'assistant', llmResponse.content);
+
+    this.cli.addMessage("assistant", llmResponse.content);
+    await this.agentService.addMessage(
+      conversationId,
+      "assistant",
+      llmResponse.content
+    );
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
-    const userInput = await this.cli.promptUser('Your response');
-    this.cli.addMessage('user', userInput);
-    await this.agentService.addMessage(conversationId, 'user', userInput);
+    const userInput = await this.cli.promptUser("Your response");
+    this.cli.addMessage("user", userInput);
+    await this.agentService.addMessage(conversationId, "user", userInput);
   }
 }
 
