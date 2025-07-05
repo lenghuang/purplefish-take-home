@@ -13,7 +13,8 @@ export class MessageRepository {
   }
 
   async create(data: Omit<typeof messages.$inferInsert, "id">) {
-    return RepositoryUtils.create(this.db, messages, data);
+    const result = await RepositoryUtils.create(this.db, messages, data);
+    return result;
   }
 
   async findById(id: number) {

@@ -70,7 +70,7 @@ async function main() {
           },
           {
             conversationId: conversation.id,
-            sender: "bot",
+            sender: "assistant",
             content: "Great! Let's get started.",
             stepId: "other",
             timestamp: new Date(),

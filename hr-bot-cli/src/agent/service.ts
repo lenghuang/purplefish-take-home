@@ -138,7 +138,8 @@ export class AgentService implements AgentServiceInterface {
       stepId,
       timestamp: new Date(),
     };
-    return await this.messageRepo.create(messageData);
+    const result = await this.messageRepo.create(messageData);
+    return result;
   }
 
   /**

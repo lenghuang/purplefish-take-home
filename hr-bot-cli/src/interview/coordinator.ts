@@ -178,11 +178,6 @@ export class InterviewCoordinator {
     );
 
     this.cli.addMessage("assistant", llmResponse.content);
-    await this.agentService.addMessage(
-      conversationId,
-      "assistant",
-      llmResponse.content
-    );
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
     const userInput = await this.cli.promptUser("Your response");
