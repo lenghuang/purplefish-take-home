@@ -92,112 +92,62 @@ export class InterviewCoordinator {
       selectedTemplate.role || selectedTemplate.name
     }". Ask the candidate the following questions, one at a time, and wait for their response before proceeding. Do not answer the questions yourself.`;
 
-    let finished = false;
-    let stepIndex = 0;
     const totalSteps = selectedTemplate.steps.length;
 
-    // Handle first question
-    await this.handleFirstQuestion(
-      conversationId,
-      selectedTemplate.id,
-      stepIndex,
-      totalSteps
-    );
-    stepIndex++;
-
-    // Handle subsequent questions
-    while (!finished && stepIndex < totalSteps) {
-      await this.handleSubsequentQuestion(
+    for (let stepIndex = 0; stepIndex < totalSteps; stepIndex++) {
+      await this.handleQuestion(
         conversationId,
         selectedTemplate.id,
         stepIndex,
         totalSteps,
-        systemPrompt
+        stepIndex === 0 ? undefined : systemPrompt
       );
-      stepIndex++;
-      finished = stepIndex >= totalSteps;
     }
   }
 
   /**
-   * Handles the first question of the interview
+   * Handles a question in the interview (unified for first and subsequent steps)
    */
-  private async handleFirstQuestion(
-    conversationId: number,
-    templateId: number,
-    stepIndex: number,
-    totalSteps: number
-  ): Promise<void> {
-    const firstPrompt = this.templateManager.getPromptForTemplateStep(
-      templateId,
-      stepIndex
-    );
-    const promptToShow =
-      typeof firstPrompt === "string" && firstPrompt
-        ? firstPrompt
-        : "Let's get started!";
-
-    // Determine stepId for initial prompt
-    let stepId = "other";
-    const template = this.templateManager.getTemplate(templateId);
-    if (template && template.steps && template.steps[stepIndex]) {
-      stepId = template.steps[stepIndex].id;
-    }
-
-    this.cli.addMessage("assistant", promptToShow, stepId);
-    await this.agentService.addMessage(
-      conversationId,
-      "assistant",
-      promptToShow,
-      stepId
-    );
-    this.cli.showProgress(stepIndex + 1, totalSteps);
-
-    const userInput = await this.cli.promptUser("Your response");
-    this.cli.addMessage("user", userInput, stepId);
-    await this.agentService.addMessage(
-      conversationId,
-      "user",
-      userInput,
-      stepId
-    );
-  }
-
-  /**
-   * Handles subsequent questions using LLM generation
-   */
-  private async handleSubsequentQuestion(
+  private async handleQuestion(
     conversationId: number,
     templateId: number,
     stepIndex: number,
     totalSteps: number,
-    systemPrompt: string
+    systemPrompt?: string
   ): Promise<void> {
     const prompt = this.templateManager.getPromptForTemplateStep(
       templateId,
       stepIndex
     );
+    const promptToShow =
+      typeof prompt === "string" && prompt ? prompt : "Let's get started!";
 
-    const templatePrompt = {
-      templateId: templateId,
-      variables: {},
-      userPrompt: prompt || "",
-      systemPrompt,
-    };
-
-    // Retrieve the template and stepId for correct message association
-    const template = this.templateManager.getTemplate(templateId);
+    // Determine stepId for prompt
     let stepId = "other";
+    const template = this.templateManager.getTemplate(templateId);
     if (template && template.steps && template.steps[stepIndex]) {
       stepId = template.steps[stepIndex].id;
     }
-    const llmResponse = await this.agentService.generateResponse(
-      conversationId,
-      templatePrompt,
-      stepId
-    );
 
-    this.cli.addMessage("assistant", llmResponse.content, stepId);
+    let questionText = promptToShow;
+
+    // For subsequent questions, use LLM to generate the question with systemPrompt
+    if (systemPrompt) {
+      const templatePrompt = {
+        templateId: templateId,
+        variables: {},
+        userPrompt: promptToShow,
+        systemPrompt,
+      };
+      const llmResponse = await this.agentService.generateResponse(
+        conversationId,
+        templatePrompt,
+        stepId
+      );
+      questionText = llmResponse.content;
+    }
+
+    this.cli.addMessage("assistant", questionText, stepId);
     this.cli.showProgress(stepIndex + 1, totalSteps);
 
     const userInput = await this.cli.promptUser("Your response");
