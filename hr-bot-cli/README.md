@@ -67,3 +67,9 @@ I'm thinking:
   - We should know how to format them since the template (could/is?) stored somewhere central.
 
 Candidate view is most important here. I think a full database viewer with some simple UI components is probably enough for "company view" for now.
+
+# Version 1.5
+
+Here, I started struggling a bit. I lost context on what the code was doing and every prompt I would stray further away from the original intent. Attempts to debug build errors led to it going down more and more of a rabbit hole. I decided that I needed to do something more legit for my database solution. The AI was trying to recreate it's own repository pattern (as per my initial guidance). At this point, I recalled from the prompt that I should probably use some ORM type thing. After asking for pros and cons between Drizzle, Prisma, and a few others, I decided to go with Drizzle. This version is me starting from scratch but with Drizzle instead.
+
+As I started implementing this, I noticed some issues with the API. Often, there would be interfaces that required one or the other to be called. Specifically, there was one that "selected" a template but did not "save" it for use. As such, I informed the AI of its temporal locality issue and was able to have it fix it.

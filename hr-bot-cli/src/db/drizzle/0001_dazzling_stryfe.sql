@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `step_id` text NOT NULL DEFAULT 'other';

@@ -29,6 +29,7 @@ export const messages = sqliteTable("messages", {
   conversationId: integer("conversation_id").references(() => conversations.id),
   sender: text("sender").notNull(),
   content: text("content").notNull(),
+  stepId: text("step_id").notNull(), // Required: links to template step or "other"
   timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
 });
 

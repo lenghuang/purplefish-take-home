@@ -44,12 +44,14 @@ async function main() {
             conversationId: conversation.id,
             sender: "user",
             content: "Hello, I'm ready for my interview.",
+            stepId: "other",
             timestamp: new Date(),
           },
           {
             conversationId: conversation.id,
             sender: "bot",
             content: "Great! Let's get started.",
+            stepId: "other",
             timestamp: new Date(),
           },
         ]);

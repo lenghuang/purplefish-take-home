@@ -125,12 +125,14 @@ export class AgentService implements AgentServiceInterface {
   async addMessage(
     conversationId: number,
     sender: "user" | "assistant",
-    content: string
+    content: string,
+    stepId: string = "other"
   ): Promise<Message> {
     const messageData = {
       conversationId,
       sender,
       content,
+      stepId,
       timestamp: new Date(),
     };
     return await this.messageRepo.create(messageData);
