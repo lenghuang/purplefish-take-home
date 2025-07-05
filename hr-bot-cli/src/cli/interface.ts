@@ -131,7 +131,8 @@ export class CLIInterface {
     if (role === "assistant") {
       console.log(`\nBot: ${content}`);
     } else {
-      console.log(`You: ${content}`);
+      // Don't log user input again
+      // console.log(`You: ${content}`);
     }
   }
 

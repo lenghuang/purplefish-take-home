@@ -100,7 +100,7 @@ export class InterviewCoordinator {
         selectedTemplate.id,
         stepIndex,
         totalSteps,
-        stepIndex === 0 ? undefined : systemPrompt
+        systemPrompt
       );
     }
   }
@@ -129,23 +129,19 @@ export class InterviewCoordinator {
       stepId = template.steps[stepIndex].id;
     }
 
-    let questionText = promptToShow;
-
-    // For subsequent questions, use LLM to generate the question with systemPrompt
-    if (systemPrompt) {
-      const templatePrompt = {
-        templateId: templateId,
-        variables: {},
-        userPrompt: promptToShow,
-        systemPrompt,
-      };
-      const llmResponse = await this.agentService.generateResponse(
-        conversationId,
-        templatePrompt,
-        stepId
-      );
-      questionText = llmResponse.content;
-    }
+    // Always use LLM to generate the question with systemPrompt
+    const templatePrompt = {
+      templateId: templateId,
+      variables: {},
+      userPrompt: promptToShow,
+      systemPrompt,
+    };
+    const llmResponse = await this.agentService.generateResponse(
+      conversationId,
+      templatePrompt,
+      stepId
+    );
+    const questionText = llmResponse.content;
 
     this.cli.addMessage("assistant", questionText, stepId);
     this.cli.showProgress(stepIndex + 1, totalSteps);

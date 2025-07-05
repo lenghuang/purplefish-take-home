@@ -74,4 +74,4 @@ Here, I started struggling a bit. I lost context on what the code was doing and 
 
 As I started implementing this, I noticed some issues with the API. Often, there would be interfaces that required one or the other to be called. Specifically, there was one that "selected" a template but did not "save" it for use. As such, I informed the AI of its temporal locality issue and was able to have it fix it.
 
-I even ran into some issues with the dependency injection stuff, where there was a subtle SQLite/Drizzle write visibility issue due to mixed db instance usage.
+I even ran into some issues with the dependency injection stuff, where there was a subtle SQLite/Drizzle write visibility issue due to mixed db instance usage. After a lot of back and forth, I was able to get it actually focus on some of the database stuff. Instead of running a raw SQL query, using the drizzle callbacks worked better. Changing it to print better helped as well, and actually persist and load the templates from the DB rather than in memory.
