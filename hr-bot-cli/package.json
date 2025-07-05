@@ -5,22 +5,31 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "tsc && node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "db:seed": "ts-node src/database/seed.ts"
+    "test": "jest",
+    "seed": "ts-node src/db/seed.ts",
+    "migrate": "ts-node src/db/migrate.ts",
+    "generate": "drizzle-kit generate",
+    "db:reset": "drizzle-kit generate && ts-node src/db/migrate.ts && ts-node src/db/seed.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@libsql/client": "^0.15.9",
+    "better-sqlite3": "^12.2.0",
     "dotenv": "^17.0.1",
-    "langchain": "^0.3.29",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "drizzle-orm": "^0.44.2",
+    "langchain": "^0.3.29"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.19.4",
     "@types/sqlite3": "^2.0.0",
+    "drizzle-kit": "^0.31.4",
+    "jest": "^30.0.4",
+    "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.0.0"
   }
