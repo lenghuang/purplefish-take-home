@@ -1,5 +1,7 @@
 import * as readline from "readline";
 import { Template } from "../template/types";
+import { db } from "../db/client";
+import { MessageRepository } from "../db/repositories/messageRepository";
 
 export interface CLIOptions {
   templates: Template[];
@@ -46,11 +48,35 @@ export class CLIInterface {
     });
   }
 
-  showConversationHistory() {
-    console.log("\n--- Conversation History ---");
-    this.conversationHistory.forEach((msg) => {
-      console.log(`${msg.role === "user" ? "You" : "Bot"}: ${msg.content}`);
-    });
+  async showConversationHistory(conversationId: number) {
+    console.log("\n--- Conversation Q/A Pairs ---");
+    const messageRepo = new MessageRepository(db);
+    const pairs = await messageRepo.getQuestionAnswerPairs(conversationId);
+
+    if (pairs.length === 0) {
+      console.log("No Q/A pairs found for this conversation.");
+      console.log("---------------------------\n");
+      return;
+    }
+
+    // Group by stepId
+    const grouped: Record<string, typeof pairs> = {};
+    for (const pair of pairs) {
+      if (!grouped[pair.stepId]) grouped[pair.stepId] = [];
+      grouped[pair.stepId].push(pair);
+    }
+
+    for (const stepId of Object.keys(grouped)) {
+      console.log(`\nStep: ${stepId}`);
+      grouped[stepId].forEach(({ question, answer }, idx) => {
+        console.log(`  Q${idx + 1}: ${question}`);
+        if (answer !== null) {
+          console.log(`  A${idx + 1}: ${answer}`);
+        } else {
+          console.log(`  A${idx + 1}: [No answer]`);
+        }
+      });
+    }
     console.log("---------------------------\n");
   }
 

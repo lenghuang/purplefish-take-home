@@ -13,6 +13,9 @@ import { getConfig } from "../config";
 import { TemplateRepository } from "../db/repositories/templateRepository";
 import { UserTemplateSelectionRepository } from "../db/repositories/userTemplateSelectionRepository";
 
+import { db } from "../db/client";
+import { MessageRepository } from "../db/repositories/messageRepository";
+
 export class TemplateManager {
   private templates: Map<TemplateId, Template> = new Map();
   private selectionState: TemplateSelectionState = {
@@ -31,13 +34,17 @@ export class TemplateManager {
 
   static async init(): Promise<TemplateManager> {
     const config = getConfig();
-    const agentService = new AgentService({
-      provider: config.llm.provider,
-      model: config.llm.modelName,
-      apiKey: config.llm.apiKey,
-      contextWindow: 10,
-      temperature: config.llm.temperature,
-    });
+    const messageRepo = new MessageRepository(db);
+    const agentService = new AgentService(
+      {
+        provider: config.llm.provider,
+        model: config.llm.modelName,
+        apiKey: config.llm.apiKey,
+        contextWindow: 10,
+        temperature: config.llm.temperature,
+      },
+      messageRepo
+    );
     return new TemplateManager(agentService);
   }
 

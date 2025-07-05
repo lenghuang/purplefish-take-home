@@ -46,7 +46,7 @@ export class InterviewCoordinator {
       await this.runInterviewLoop(conversation.id, selectedTemplate, userId);
 
       // Finish interview
-      this.cli.showConversationHistory();
+      await this.cli.showConversationHistory(conversation.id);
       this.cli.exit("Interview finished. Goodbye!");
     } catch (err) {
       this.cli.handleError(err);
@@ -72,7 +72,7 @@ export class InterviewCoordinator {
       await this.runInterviewLoop(conversation.id, selectedTemplate, userId);
 
       // Finish interview
-      this.cli.showConversationHistory();
+      await this.cli.showConversationHistory(conversation.id);
       this.cli.exit("Interview finished. Goodbye!");
     } catch (err) {
       this.cli.handleError(err);

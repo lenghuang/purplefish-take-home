@@ -55,11 +55,13 @@ export class AgentService implements AgentServiceInterface {
   // Placeholder for LLM client (to be implemented with actual provider)
   private llmClient: any;
 
-  constructor(config: AgentConfig) {
+  constructor(
+    config: AgentConfig,
+    messageRepo: import("../db/repositories/messageRepository").MessageRepository
+  ) {
     this.config = config;
     this.conversationRepo = new ConversationRepository();
-    this.messageRepo =
-      new (require("../db/repositories/messageRepository").MessageRepository)();
+    this.messageRepo = messageRepo;
 
     // Initialize LangChain ChatOpenAI client
     this.llmClient = new ChatOpenAI({

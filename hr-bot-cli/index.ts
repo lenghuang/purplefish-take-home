@@ -4,6 +4,9 @@ import { CLIInterface } from "./src/cli/interface";
 import { AgentService, AgentServiceInterface } from "./src/agent/service";
 import { InterviewCoordinator } from "./src/interview/coordinator";
 
+import { db } from "./src/db/client";
+import { MessageRepository } from "./src/db/repositories/messageRepository";
+
 interface Dependencies {
   config: any;
   templateManager: TemplateManager;
@@ -37,7 +40,8 @@ function createAgentService(config: any): AgentServiceInterface {
   };
 
   // Create agent service
-  return new AgentService(agentConfig);
+  const messageRepo = new MessageRepository(db);
+  return new AgentService(agentConfig, messageRepo);
 }
 
 async function handleTemplateSelection(
