@@ -26,10 +26,10 @@ export class TemplateManager {
   private templateRepo: TemplateRepository;
   private userTemplateSelectionRepo: UserTemplateSelectionRepository;
 
-  private constructor(agentService: AgentService) {
+  private constructor(agentService: AgentService, db: any) {
     this.agentService = agentService;
-    this.templateRepo = new TemplateRepository();
-    this.userTemplateSelectionRepo = new UserTemplateSelectionRepository();
+    this.templateRepo = new TemplateRepository(db);
+    this.userTemplateSelectionRepo = new UserTemplateSelectionRepository(db);
   }
 
   static async init(): Promise<TemplateManager> {
@@ -43,9 +43,10 @@ export class TemplateManager {
         contextWindow: 10,
         temperature: config.llm.temperature,
       },
-      messageRepo
+      messageRepo,
+      db
     );
-    return new TemplateManager(agentService);
+    return new TemplateManager(agentService, db);
   }
 
   /**

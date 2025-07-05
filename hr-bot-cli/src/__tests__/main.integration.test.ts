@@ -114,9 +114,14 @@ describe("Main Application Flow - Characterization Tests", () => {
 
       // Import and instantiate a mock MessageRepository
       const mockMessageRepo = new MessageRepository({});
-      // Pass both agentConfig and mockMessageRepo to AgentService
-      new AgentService(agentConfig, mockMessageRepo);
-      expect(AgentService).toHaveBeenCalledWith(agentConfig, mockMessageRepo);
+      const mockDb = {};
+      // Pass agentConfig, mockMessageRepo, and mockDb to AgentService
+      new AgentService(agentConfig, mockMessageRepo, mockDb);
+      expect(AgentService).toHaveBeenCalledWith(
+        agentConfig,
+        mockMessageRepo,
+        mockDb
+      );
     });
 
     it("should initialize conversation correctly", async () => {

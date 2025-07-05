@@ -41,7 +41,7 @@ function createAgentService(config: any): AgentServiceInterface {
 
   // Create agent service
   const messageRepo = new MessageRepository(db);
-  return new AgentService(agentConfig, messageRepo);
+  return new AgentService(agentConfig, messageRepo, db);
 }
 
 async function handleTemplateSelection(

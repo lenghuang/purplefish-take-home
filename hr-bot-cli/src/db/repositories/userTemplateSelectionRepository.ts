@@ -1,10 +1,15 @@
-import { db } from "../client";
 import { userTemplateSelection } from "../schema";
 import { eq } from "drizzle-orm";
 
 export class UserTemplateSelectionRepository {
+  private db: any;
+
+  constructor(db: any) {
+    this.db = db;
+  }
+
   async create(data: Omit<typeof userTemplateSelection.$inferInsert, "id">) {
-    const [result] = await db
+    const [result] = await this.db
       .insert(userTemplateSelection)
       .values(data)
       .returning();
@@ -12,17 +17,17 @@ export class UserTemplateSelectionRepository {
   }
 
   async findById(id: number) {
-    return db.query.userTemplateSelection.findFirst({
+    return this.db.query.userTemplateSelection.findFirst({
       where: eq(userTemplateSelection.id, id),
     });
   }
 
   async findAll() {
-    return db.select().from(userTemplateSelection);
+    return this.db.select().from(userTemplateSelection);
   }
 
   async findByUser(userId: string) {
-    return db
+    return this.db
       .select()
       .from(userTemplateSelection)
       .where(eq(userTemplateSelection.userId, userId));
@@ -32,7 +37,7 @@ export class UserTemplateSelectionRepository {
     id: number,
     data: Partial<typeof userTemplateSelection.$inferInsert>
   ) {
-    const [result] = await db
+    const [result] = await this.db
       .update(userTemplateSelection)
       .set(data)
       .where(eq(userTemplateSelection.id, id))
@@ -41,7 +46,7 @@ export class UserTemplateSelectionRepository {
   }
 
   async delete(id: number) {
-    await db
+    await this.db
       .delete(userTemplateSelection)
       .where(eq(userTemplateSelection.id, id));
   }

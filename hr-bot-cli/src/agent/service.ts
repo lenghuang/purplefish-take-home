@@ -57,10 +57,11 @@ export class AgentService implements AgentServiceInterface {
 
   constructor(
     config: AgentConfig,
-    messageRepo: import("../db/repositories/messageRepository").MessageRepository
+    messageRepo: import("../db/repositories/messageRepository").MessageRepository,
+    db: any
   ) {
     this.config = config;
-    this.conversationRepo = new ConversationRepository();
+    this.conversationRepo = new ConversationRepository(db);
     this.messageRepo = messageRepo;
 
     // Initialize LangChain ChatOpenAI client

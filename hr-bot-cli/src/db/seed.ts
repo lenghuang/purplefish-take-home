@@ -8,12 +8,6 @@ import {
 
 async function main() {
   try {
-    // Insert real example templates from TypeScript files
-    // Import templates
-    // (Import at top of file)
-    // import softwareEngineerTemplate from "../../template/examples/software-engineer";
-    // import icuNurseTemplate from "../../template/examples/icu-nurse";
-    // import seniorEngineerTemplate from "../../template/examples/senior-engineer";
     const { default: softwareEngineerTemplate } = await import(
       "../template/examples/software-engineer"
     );
@@ -23,11 +17,13 @@ async function main() {
     const { default: seniorEngineerTemplate } = await import(
       "../template/examples/senior-engineer"
     );
+    const { default: dummy } = await import("../template/examples/dummy");
 
     const templatesToSeed = [
       softwareEngineerTemplate,
       icuNurseTemplate,
       seniorEngineerTemplate,
+      dummy,
     ];
 
     // Clean up all dependent tables to avoid foreign key constraint errors

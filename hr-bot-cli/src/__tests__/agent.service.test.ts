@@ -34,7 +34,8 @@ describe("AgentService - Characterization Tests", () => {
     const mockMessageRepo = new MessageRepository({});
     mockMessageRepo.create = jest.fn();
     mockMessageRepo.findByConversation = jest.fn();
-    agentService = new AgentService(mockConfig, mockMessageRepo);
+    const mockDb = {};
+    agentService = new AgentService(mockConfig, mockMessageRepo, mockDb);
   });
 
   describe("initialization", () => {

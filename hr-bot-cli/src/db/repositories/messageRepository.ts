@@ -1,5 +1,5 @@
 import { messages } from "../schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { RepositoryUtils } from "./base";
 
 /**
@@ -13,15 +13,21 @@ export class MessageRepository {
   }
 
   async create(data: Omit<typeof messages.$inferInsert, "id">) {
-    return RepositoryUtils.create(messages, data);
+    return RepositoryUtils.create(this.db, messages, data);
   }
 
   async findById(id: number) {
-    return RepositoryUtils.findById(messages, this.db.query, "messages", id);
+    return RepositoryUtils.findById(
+      this.db,
+      messages,
+      this.db.query,
+      "messages",
+      id
+    );
   }
 
   async findAll() {
-    return RepositoryUtils.findAll(messages);
+    return RepositoryUtils.findAll(this.db, messages);
   }
 
   async findByConversation(conversationId: number) {
@@ -33,11 +39,11 @@ export class MessageRepository {
   }
 
   async update(id: number, data: Partial<typeof messages.$inferInsert>) {
-    return RepositoryUtils.update(messages, id, data);
+    return RepositoryUtils.update(this.db, messages, id, data);
   }
 
   async delete(id: number) {
-    return RepositoryUtils.delete(messages, id);
+    return RepositoryUtils.delete(this.db, messages, id);
   }
   /**
    * Returns a list of question/answer pairs for a conversation (and optionally step).
@@ -57,19 +63,45 @@ export class MessageRepository {
       stepId: string;
     }[]
   > {
+    console.log("[getQuestionAnswerPairs]", { conversationId, stepId });
+
+    // Log all messages for this conversation (and step, if provided)
+    const allMessages = await this.db
+      .select()
+      .from(messages)
+      .where(
+        stepId !== undefined
+          ? and(
+              eq(messages.conversationId, conversationId),
+              eq(messages.stepId, stepId)
+            )
+          : eq(messages.conversationId, conversationId)
+      );
+    console.log(
+      "[getQuestionAnswerPairs] All messages for conversation:",
+      allMessages.map((m: any) => ({
+        id: m.id,
+        sender: m.sender,
+        content: m.content,
+        stepId: m.stepId,
+        timestamp: m.timestamp,
+      }))
+    );
+
     // Use raw SQL for efficient pairing logic.
     // This query is fully compatible with SQLite (LEFT JOIN, NOT EXISTS, parameterization, and string escaping reviewed).
     // String literals use single quotes, and the query string uses double quotes (template literal).
     // If you change the schema or migrate to another DB, review this query for compatibility.
-    const params: any[] = [conversationId];
+    // Directly inject params into SQL string using template literals.
+    // WARNING: This disables SQL parameterization for conversationId and stepId.
+    // Make sure these values are trusted and properly escaped.
     let stepFilter = "";
     if (stepId !== undefined) {
-      stepFilter = "AND m1.step_id = ?";
-      params.push(stepId);
+      // Escape single quotes in stepId to prevent SQL injection
+      const safeStepId = stepId.replace(/'/g, "''");
+      stepFilter = `AND m1.step_id = '${safeStepId}'`;
     }
 
-    // The query:
-    // For each assistant message, find the next user message in the same step with a greater timestamp
     const sql = `
       SELECT
         m1.id AS questionId,
@@ -80,28 +112,25 @@ export class MessageRepository {
       FROM messages m1
       LEFT JOIN messages m2
         ON m2.conversation_id = m1.conversation_id
-        AND m2.step_id = m1.step_id
+        AND ((m2.step_id = m1.step_id) OR (m2.step_id IS NULL AND m1.step_id IS NULL))
         AND m2.sender = 'user'
-        AND m2.timestamp > m1.timestamp
-        AND NOT EXISTS (
-          SELECT 1 FROM messages m3
-          WHERE m3.conversation_id = m1.conversation_id
-            AND m3.step_id = m1.step_id
-            AND m3.sender = 'user'
-            AND m3.timestamp > m1.timestamp
-            AND m3.timestamp < m2.timestamp
-        )
-      WHERE m1.conversation_id = ?
+        AND m2.id > m1.id
+      WHERE m1.conversation_id = ${conversationId}
         AND m1.sender = 'assistant'
         ${stepFilter}
-      ORDER BY m1.step_id, m1.timestamp
+      ORDER BY m1.step_id, m1.id
     `;
 
     try {
       // Use Drizzle ORM's raw SQL execution for better-sqlite3: use .run
-      const result = await this.db.run(sql, params);
+      const result = await this.db.run(sql);
       // Drizzle's run returns { rows: [...] }
-      const rows = result.rows ?? result;
+      const rows = result?.rows ?? [];
+
+      console.log("[getQuestionAnswerPairs]", { result, rows, sql });
+      if (rows?.length <= 0) {
+        return [];
+      }
 
       return rows.map((row: any) => ({
         questionId: row.questionId,
@@ -111,11 +140,6 @@ export class MessageRepository {
         stepId: row.stepId,
       }));
     } catch (error: any) {
-      // Log the error to the CLI output
-      console.error(
-        "Database query failed in getQuestionAnswerPairs:",
-        error?.message || error
-      );
       // Optionally, rethrow to ensure CLI displays the error
       throw new Error(
         `Database query failed in getQuestionAnswerPairs: ${
