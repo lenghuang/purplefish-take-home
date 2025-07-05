@@ -8,23 +8,48 @@ import {
 
 async function main() {
   try {
-    // Insert example templates
-    await db.insert(templates).values([
-      {
-        name: "Software Engineer",
-        description: "Interview template for software engineers.",
-        content:
-          "Q: Tell me about a challenging bug you fixed.\nQ: How do you design scalable systems?",
+    // Insert real example templates from TypeScript files
+    // Import templates
+    // (Import at top of file)
+    // import softwareEngineerTemplate from "../../template/examples/software-engineer";
+    // import icuNurseTemplate from "../../template/examples/icu-nurse";
+    // import seniorEngineerTemplate from "../../template/examples/senior-engineer";
+    const { default: softwareEngineerTemplate } = await import(
+      "../template/examples/software-engineer"
+    );
+    const { default: icuNurseTemplate } = await import(
+      "../template/examples/icu-nurse"
+    );
+    const { default: seniorEngineerTemplate } = await import(
+      "../template/examples/senior-engineer"
+    );
+
+    const templatesToSeed = [
+      softwareEngineerTemplate,
+      icuNurseTemplate,
+      seniorEngineerTemplate,
+    ];
+
+    // Clean up all dependent tables to avoid foreign key constraint errors
+    await db.delete(messages);
+    await db.delete(conversations);
+    await db.delete(userTemplateSelection);
+    await db.delete(templates); // Now safe to clear templates
+
+    await db.insert(templates).values(
+      templatesToSeed.map((tpl) => ({
+        id: tpl.id,
+        name: tpl.name,
+        description: tpl.description,
+        content: JSON.stringify({
+          ...tpl,
+          id: undefined,
+          name: undefined,
+          description: undefined,
+        }),
         createdAt: new Date(),
-      },
-      {
-        name: "ICU Nurse",
-        description: "Interview template for ICU nurses.",
-        content:
-          "Q: How do you handle high-stress situations?\nQ: Describe your experience with critical care equipment.",
-        createdAt: new Date(),
-      },
-    ]);
+      }))
+    );
 
     // Insert example conversation
     const [template] = await db.select().from(templates).limit(1);

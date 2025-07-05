@@ -6,11 +6,6 @@ import {
 } from "./types";
 import { validateTemplate, generatePrompt } from "./utils";
 
-// Example templates
-import softwareEngineerTemplate from "./examples/software-engineer";
-import icuNurseTemplate from "./examples/icu-nurse";
-import seniorEngineerTemplate from "./examples/senior-engineer";
-
 // Database and agent integration (assume these services exist)
 import { AgentService } from "../agent/service";
 import { getConfig } from "../config";
@@ -29,7 +24,6 @@ export class TemplateManager {
   private userTemplateSelectionRepo: UserTemplateSelectionRepository;
 
   private constructor(agentService: AgentService) {
-    this.loadBuiltInTemplates();
     this.agentService = agentService;
     this.templateRepo = new TemplateRepository();
     this.userTemplateSelectionRepo = new UserTemplateSelectionRepository();
@@ -45,26 +39,6 @@ export class TemplateManager {
       temperature: config.llm.temperature,
     });
     return new TemplateManager(agentService);
-  }
-
-  /**
-   * Loads built-in templates from the examples directory.
-   */
-  private loadBuiltInTemplates() {
-    [
-      softwareEngineerTemplate,
-      icuNurseTemplate,
-      seniorEngineerTemplate,
-    ].forEach((tpl) => {
-      const result = validateTemplate(tpl);
-      if (result.valid) {
-        this.templates.set(tpl.id, tpl);
-      } else {
-        // eslint-disable-next-line no-console
-        console.warn(`Invalid template "${tpl.id}":`, result.errors);
-      }
-    });
-    this.updateDropdownOptions();
   }
 
   /**

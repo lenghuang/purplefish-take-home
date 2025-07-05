@@ -17,6 +17,7 @@ async function setupDependencies(): Promise<Dependencies> {
 
   // Initialize TemplateManager (which also initializes the database)
   const templateManager = await TemplateManager.init();
+  await templateManager.loadTemplatesFromDatabase();
   const templates = templateManager.getAllTemplates();
 
   // Set up CLI interface
@@ -39,15 +40,22 @@ function createAgentService(config: any): AgentServiceInterface {
   return new AgentService(agentConfig);
 }
 
-async function handleTemplateSelection(cli: CLIInterface, templates: any[], templateManager: TemplateManager) {
+async function handleTemplateSelection(
+  cli: CLIInterface,
+  templates: any[],
+  templateManager: TemplateManager
+) {
   // Template selection
   const selectedTemplate = await cli.selectTemplateDropdown(templates);
 
   // User ID (stub, could be replaced with auth)
   const userId = "user123";
-  
+
   // Atomic operation - no temporal coupling
-  const success = await templateManager.selectAndSaveTemplate(selectedTemplate.id, userId);
+  const success = await templateManager.selectAndSaveTemplate(
+    selectedTemplate.id,
+    userId
+  );
   if (!success) {
     throw new Error(`Failed to select template ${selectedTemplate.id}`);
   }
@@ -57,9 +65,13 @@ async function handleTemplateSelection(cli: CLIInterface, templates: any[], temp
 
 async function main() {
   const { config, templateManager, templates, cli } = await setupDependencies();
-  
+
   try {
-    const { selectedTemplate, userId } = await handleTemplateSelection(cli, templates, templateManager);
+    const { selectedTemplate, userId } = await handleTemplateSelection(
+      cli,
+      templates,
+      templateManager
+    );
 
     // Create agent service
     const agent = createAgentService(config);
