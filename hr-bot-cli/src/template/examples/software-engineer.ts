@@ -4,7 +4,7 @@ const softwareEngineerTemplate: Template = {
   id: 1,
   name: "Software Engineer Interview",
   description:
-    "Interview template for software engineering candidates, focusing on technical and behavioral skills.",
+    "Interview template for software engineering candidates, focusing on technical and behavioral skills. Demonstrates tool-driven flow for salary validation and negotiation.",
   role: "Software Engineer",
   tags: ["engineering", "software", "technical"],
   version: "1.0",
@@ -24,31 +24,19 @@ const softwareEngineerTemplate: Template = {
       expectedType: "text",
     },
     {
+      id: "salary-expectations",
+      title: "Salary Expectations",
+      prompt:
+        "What are your salary expectations for this role? Please provide a range or specific number.",
+      expectedType: "text",
+      // This step demonstrates tool-driven flow: SalaryValidatorTool and NegotiationTool
+      tools: ["SalaryValidatorTool", "NegotiationTool"],
+    },
+    {
       id: "problem-solving",
       title: "Problem Solving",
       prompt:
         "Describe a challenging technical problem you solved. How did you approach it?",
-      expectedType: "text",
-    },
-    {
-      id: "coding",
-      title: "Coding Exercise",
-      prompt:
-        "Write a function in your preferred language that reverses a string.",
-      expectedType: "code",
-    },
-    {
-      id: "behavioral",
-      title: "Behavioral Question",
-      prompt:
-        "Tell me about a time you had a conflict in a team. How did you resolve it?",
-      expectedType: "text",
-    },
-    {
-      id: "system-design",
-      title: "System Design",
-      prompt:
-        "Design a URL shortening service. Briefly describe your approach and key components.",
       expectedType: "text",
     },
   ],

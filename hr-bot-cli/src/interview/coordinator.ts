@@ -1,4 +1,8 @@
-import { AgentService, AgentServiceInterface } from "../agent/service";
+import {
+  AgentService,
+  AgentServiceInterface,
+  SalaryValidatorTool,
+} from "../agent/service";
 import { CLIInterface } from "../cli/interface";
 import TemplateManager from "../template/manager";
 import { Template } from "../template/types";
@@ -122,12 +126,18 @@ export class InterviewCoordinator {
     const promptToShow =
       typeof prompt === "string" && prompt ? prompt : "Let's get started!";
 
-    // Determine stepId for prompt
+    // Determine stepId for prompt and get step/tools
     let stepId = "other";
+    let step: any = null;
     const template = this.templateManager.getTemplate(templateId);
     if (template && template.steps && template.steps[stepIndex]) {
-      stepId = template.steps[stepIndex].id;
+      step = template.steps[stepIndex];
+      stepId = step.id;
     }
+
+    // Get tools for this step if present
+    const tools: string[] | undefined =
+      step && step.tools ? step.tools : undefined;
 
     // Always use LLM to generate the question with systemPrompt
     const templatePrompt = {
@@ -139,7 +149,8 @@ export class InterviewCoordinator {
     const llmResponse = await this.agentService.generateResponse(
       conversationId,
       templatePrompt,
-      stepId
+      stepId,
+      tools
     );
     const questionText = llmResponse.content;
 
@@ -154,6 +165,55 @@ export class InterviewCoordinator {
       userInput,
       stepId
     );
+
+    // Tool-driven flow: handle tool results after user input
+    if (tools && tools.length > 0) {
+      // Use actual InterviewTool instances from AgentService
+      const registeredTools =
+        this.agentService.getTools() as import("../agent/types").InterviewTool[];
+      const conversationContext =
+        await this.agentService.getConversationContext(conversationId);
+      if (!conversationContext) {
+        this.cli.addMessage(
+          "assistant",
+          "Error: Conversation context not found. Tool invocation skipped.",
+          stepId
+        );
+        return;
+      }
+      for (const toolName of tools) {
+        const toolInstance = registeredTools.find(
+          (t: import("../agent/types").InterviewTool) => t.name === toolName
+        );
+        if (toolInstance) {
+          // Prepare context and prompt for the tool
+          const toolContext = {
+            context: conversationContext,
+            templatePrompt: {
+              templateId: templateId,
+              variables: {},
+              userPrompt: userInput,
+              systemPrompt,
+            },
+            stepId,
+          };
+          // Check if the tool matches this prompt
+          if (toolInstance.matches(toolContext)) {
+            const result = await toolInstance.execute(toolContext);
+            this.cli.addMessage("assistant", result, stepId);
+            // Optionally, handle early exit or branching logic based on result
+            if (
+              toolName === "NegotiationTool" &&
+              typeof result === "string" &&
+              result.toLowerCase().includes("negotiation")
+            ) {
+              this.cli.exit("Interview ended due to salary negotiation.");
+              return;
+            }
+          }
+        }
+      }
+    }
   }
 }
 

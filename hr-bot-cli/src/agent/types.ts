@@ -48,6 +48,33 @@ export interface TemplatePrompt {
 }
 
 /**
+ * Interface for agent tools (e.g., SalaryValidatorTool, NegotiationTool).
+ * Tools can inspect the conversation context and prompt, and decide whether to act.
+ */
+export interface InterviewTool {
+  /** Unique name or identifier for the tool */
+  name: string;
+  /**
+   * Determines if the tool should be invoked for the given context and prompt.
+   * Return true if the tool should handle this step.
+   */
+  matches(params: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): boolean | Promise<boolean>;
+  /**
+   * Executes the tool and returns a result string to be injected into the LLM context.
+   * The result will be added as a system message before the LLM is called.
+   */
+  execute(params: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): Promise<string>;
+}
+
+/**
  * LLM response format.
  */
 export interface LLMResponse {

@@ -12,6 +12,11 @@ export interface TemplateStep {
   expectedType?: "text" | "choice" | "code" | "rating" | string;
   choices?: string[];
   config?: Record<string, any>;
+  /**
+   * Optional list of tool names (e.g., InterviewTools) available or required for this step.
+   * If omitted, no tools are explicitly configured for this step.
+   */
+  tools?: string[];
 }
 
 export interface TemplateConfig {

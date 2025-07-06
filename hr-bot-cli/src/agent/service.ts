@@ -5,6 +5,7 @@ import {
   TemplatePrompt,
   LLMResponse,
 } from "./types";
+import type { InterviewTool } from "./types";
 import { conversations, messages } from "../db/schema";
 import { trimContextWindow, formatPrompt, parseLLMResponse } from "./utils";
 import { ConversationRepository } from "../db/repositories/conversationRepository";
@@ -21,6 +22,7 @@ type Conversation = InferSelectModel<typeof conversations>;
 type Message = InferSelectModel<typeof messages>;
 
 export interface AgentServiceInterface {
+  getTools(): InterviewTool[];
   setTemplateContext(
     sessionId: number,
     template: import("../template/types").Template
@@ -42,7 +44,8 @@ export interface AgentServiceInterface {
   generateResponse(
     conversationId: number,
     templatePrompt: TemplatePrompt,
-    stepId: string
+    stepId: string,
+    tools?: string[]
   ): Promise<LLMResponse>;
   callLLM(messages: AgentMessage[]): Promise<any>;
 }
@@ -50,12 +53,112 @@ export interface AgentServiceInterface {
 /**
  * AgentService handles LLM integration, context management, and DB persistence.
  */
+/**
+ * Tool: SalaryValidatorTool
+ * Checks if a candidate's desired salary is within an acceptable range.
+ */
+class SalaryValidatorTool implements InterviewTool {
+  name = "SalaryValidatorTool";
+  // Acceptable salary range (could be dynamic/configurable)
+  private minSalary = 70000;
+  private maxSalary = 200000;
+
+  matches({
+    templatePrompt,
+  }: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): boolean {
+    // Simple keyword-based detection for salary-related prompts/answers
+    const text = (templatePrompt?.userPrompt || "").toLowerCase();
+    return /salary|compensation|pay|expected compensation|desired salary/.test(
+      text
+    );
+  }
+
+  async execute({
+    context,
+    templatePrompt,
+  }: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): Promise<string> {
+    // Try to extract a number from the prompt (very basic)
+    const text = templatePrompt?.userPrompt || "";
+    const match = text.match(/\$?(\d{2,6})/);
+    if (match) {
+      const salary = parseInt(match[1], 10);
+      if (salary < this.minSalary) {
+        return `The desired salary of $${salary} is below the acceptable range for this position.`;
+      } else if (salary > this.maxSalary) {
+        return `The desired salary of $${salary} is above the acceptable range for this position.`;
+      } else {
+        return `The desired salary of $${salary} is within the acceptable range.`;
+      }
+    }
+    return "clarification_needed: Could you please specify a numeric salary amount?";
+  }
+}
+
+/**
+ * Tool: NegotiationTool
+ * Generates negotiation prompts or responses for salary discussions.
+ */
+class NegotiationTool implements InterviewTool {
+  name = "NegotiationTool";
+
+  matches({
+    templatePrompt,
+  }: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): boolean {
+    // Detect negotiation intent (simple keyword-based)
+    const text = (templatePrompt?.userPrompt || "").toLowerCase();
+    return /negotiate|counter offer|is that flexible|room for negotiation|can you do better|can you increase|can you match|can you improve/.test(
+      text
+    );
+  }
+
+  async execute({
+    context,
+    templatePrompt,
+  }: {
+    context: ConversationContext;
+    templatePrompt: TemplatePrompt;
+    stepId: string;
+  }): Promise<string> {
+    // Basic negotiation response
+    return "Negotiation detected: Consider discussing the offer details, highlighting your unique skills, or asking about other forms of compensation (e.g., benefits, bonuses, equity).";
+  }
+}
+
 export class AgentService implements AgentServiceInterface {
   private config: AgentConfig;
   private conversationRepo: ConversationRepository;
   private messageRepo: import("../db/repositories/messageRepository").MessageRepository;
   // Placeholder for LLM client (to be implemented with actual provider)
   private llmClient: any;
+
+  // Tool registry for InterviewTools
+  private tools: InterviewTool[] = [];
+
+  /**
+   * Register a new InterviewTool.
+   */
+  public registerTool(tool: InterviewTool): void {
+    this.tools.push(tool);
+  }
+
+  /**
+   * Get all registered InterviewTools.
+   */
+  public getTools(): InterviewTool[] {
+    return this.tools.slice();
+  }
 
   constructor(
     config: AgentConfig,
@@ -72,6 +175,9 @@ export class AgentService implements AgentServiceInterface {
       modelName: config.model,
       temperature: config.temperature ?? 0.7,
     });
+    // Register InterviewTools
+    this.registerTool(new SalaryValidatorTool());
+    this.registerTool(new NegotiationTool());
   }
 
   /**
@@ -162,7 +268,8 @@ export class AgentService implements AgentServiceInterface {
   async generateResponse(
     conversationId: number,
     templatePrompt: TemplatePrompt,
-    stepId: string
+    stepId: string,
+    tools?: string[]
   ): Promise<LLMResponse> {
     const context = await this.getConversationContext(conversationId);
     if (!context) throw new Error("Conversation not found");
@@ -178,11 +285,44 @@ export class AgentService implements AgentServiceInterface {
       this.config.contextWindow
     );
 
+    // Tool invocation: check if any registered tool matches this step/context
+    let toolResult: string | null = null;
+    // If tools are specified, filter to only those tools
+    const availableTools = tools
+      ? this.tools.filter((tool) => tools.includes(tool.constructor.name))
+      : this.tools;
+    for (const tool of availableTools) {
+      // Only the first matching tool is invoked for now
+      // (Extensible for multiple tools in the future)
+      const shouldInvoke = await tool.matches({
+        context,
+        templatePrompt,
+        stepId,
+      });
+      if (shouldInvoke) {
+        toolResult = await tool.execute({
+          context,
+          templatePrompt,
+          stepId,
+        });
+        break;
+      }
+    }
+
     // Format the new prompt
     const promptMessages = formatPrompt(templatePrompt);
 
-    // Compose the full prompt for the LLM
-    const llmMessages = [...trimmedHistory, ...promptMessages];
+    // If a tool was invoked, inject its result as a system message before the prompt
+    let llmMessages: AgentMessage[];
+    if (toolResult) {
+      llmMessages = [
+        ...trimmedHistory,
+        { role: "system", content: `[Tool: ${toolResult}]` },
+        ...promptMessages,
+      ];
+    } else {
+      llmMessages = [...trimmedHistory, ...promptMessages];
+    }
 
     // Call the LLM (placeholder)
     const rawResponse = await this.callLLM(llmMessages);
@@ -231,3 +371,5 @@ export class AgentService implements AgentServiceInterface {
     };
   }
 }
+
+export { SalaryValidatorTool };

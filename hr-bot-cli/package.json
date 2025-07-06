@@ -16,11 +16,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@langchain/core": "^0.3.62",
     "@libsql/client": "^0.15.9",
     "better-sqlite3": "^12.2.0",
     "dotenv": "^17.0.1",
     "drizzle-orm": "^0.44.2",
-    "langchain": "^0.3.29"
+    "langchain": "^0.3.29",
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
