@@ -47,7 +47,7 @@ function createAgentService(config: any): AgentServiceInterface {
 async function handleTemplateSelection(
   cli: CLIInterface,
   templates: any[],
-  templateManager: TemplateManager
+  templateManager: TemplateManager,
 ) {
   // Template selection
   const selectedTemplate = await cli.selectTemplateDropdown(templates);
@@ -58,7 +58,7 @@ async function handleTemplateSelection(
   // Atomic operation - no temporal coupling
   const success = await templateManager.selectAndSaveTemplate(
     selectedTemplate.id,
-    userId
+    userId,
   );
   if (!success) {
     throw new Error(`Failed to select template ${selectedTemplate.id}`);
@@ -74,7 +74,7 @@ async function main() {
     const { selectedTemplate, userId } = await handleTemplateSelection(
       cli,
       templates,
-      templateManager
+      templateManager,
     );
 
     // Create agent service

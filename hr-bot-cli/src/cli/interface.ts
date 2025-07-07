@@ -125,7 +125,7 @@ export class CLIInterface {
   addMessage(
     role: "user" | "assistant",
     content: string,
-    stepId: string = "other"
+    stepId: string = "other",
   ) {
     this.conversationHistory.push({ role, content, stepId });
     if (role === "assistant") {

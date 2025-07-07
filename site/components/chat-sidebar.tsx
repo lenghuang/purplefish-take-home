@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   type Conversation,
   type JobRole,
@@ -12,54 +18,54 @@ import {
   getJobRoles,
   createConversation,
   deleteConversation,
-} from "@/lib/data"
-import { PlusIcon, MessageSquareIcon, Trash2Icon } from "lucide-react" // Added Trash2Icon
+} from "@/lib/data";
+import { PlusIcon, MessageSquareIcon, Trash2Icon } from "lucide-react"; // Added Trash2Icon
 
 type ChatSidebarProps = {
-  onSelectConversation: (conversationId: string) => void
-  selectedConversationId: string | null
-  onConversationsChanged: () => void // Renamed prop for clarity
-}
+  onSelectConversation: (conversationId: string) => void;
+  selectedConversationId: string | null;
+  onConversationsChanged: () => void; // Renamed prop for clarity
+};
 
 export function ChatSidebar({
   onSelectConversation,
   selectedConversationId,
   onConversationsChanged,
 }: ChatSidebarProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [jobRoles, setJobRoles] = useState<JobRole[]>([])
-  const [selectedJobRole, setSelectedJobRole] = useState<string>("")
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
+  const [selectedJobRole, setSelectedJobRole] = useState<string>("");
 
   // Effect to load conversations and job roles
   useEffect(() => {
-    setConversations(getConversations())
-    setJobRoles(getJobRoles())
+    setConversations(getConversations());
+    setJobRoles(getJobRoles());
     if (getJobRoles().length > 0) {
-      setSelectedJobRole(getJobRoles()[0].id) // Select first job role by default
+      setSelectedJobRole(getJobRoles()[0].id); // Select first job role by default
     }
-  }, [selectedConversationId, onConversationsChanged]) // Re-run when selectedConversationId changes or conversations are changed
+  }, [selectedConversationId, onConversationsChanged]); // Re-run when selectedConversationId changes or conversations are changed
 
   const handleNewConversation = () => {
     if (selectedJobRole) {
-      const newConv = createConversation(selectedJobRole)
-      setConversations(getConversations()) // Refresh list locally
-      onSelectConversation(newConv.id) // Select the new conversation
-      onConversationsChanged() // Notify parent about new conversation
+      const newConv = createConversation(selectedJobRole);
+      setConversations(getConversations()); // Refresh list locally
+      onSelectConversation(newConv.id); // Select the new conversation
+      onConversationsChanged(); // Notify parent about new conversation
     } else {
-      alert("Please select a job role to start a new conversation.")
+      alert("Please select a job role to start a new conversation.");
     }
-  }
+  };
 
   const handleDeleteConversation = (id: string) => {
     if (confirm("Are you sure you want to delete this conversation?")) {
-      deleteConversation(id)
-      setConversations(getConversations()) // Refresh list locally
+      deleteConversation(id);
+      setConversations(getConversations()); // Refresh list locally
       if (selectedConversationId === id) {
-        onSelectConversation("") // Clear selection if the deleted conversation was active
+        onSelectConversation(""); // Clear selection if the deleted conversation was active
       }
-      onConversationsChanged() // Notify parent about deletion
+      onConversationsChanged(); // Notify parent about deletion
     }
-  }
+  };
 
   return (
     <Card className="flex flex-col h-full w-full md:w-80">
@@ -88,13 +94,20 @@ export function ChatSidebar({
         </div>
         <ScrollArea className="flex-grow p-4">
           {conversations.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center mt-4">No conversations yet. Start a new one!</p>
+            <p className="text-sm text-gray-500 text-center mt-4">
+              No conversations yet. Start a new one!
+            </p>
           ) : (
             <div className="space-y-2">
               {conversations.map((conv) => (
-                <div key={conv.id} className="flex items-center justify-between gap-2">
+                <div
+                  key={conv.id}
+                  className="flex items-center justify-between gap-2"
+                >
                   <Button
-                    variant={selectedConversationId === conv.id ? "secondary" : "ghost"}
+                    variant={
+                      selectedConversationId === conv.id ? "secondary" : "ghost"
+                    }
                     className="flex-grow justify-start h-auto py-2 px-3 text-left"
                     onClick={() => onSelectConversation(conv.id)}
                   >
@@ -103,7 +116,9 @@ export function ChatSidebar({
                       <span className="font-medium">{conv.jobRole}</span>
                       <span className="text-xs text-gray-500">
                         {new Date(conv.createdAt).toLocaleDateString()}
-                        {conv.isDone && <span className="ml-2 text-green-600">(Done)</span>}
+                        {conv.isDone && (
+                          <span className="ml-2 text-green-600">(Done)</span>
+                        )}
                       </span>
                     </div>
                   </Button>
@@ -123,5 +138,5 @@ export function ChatSidebar({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }

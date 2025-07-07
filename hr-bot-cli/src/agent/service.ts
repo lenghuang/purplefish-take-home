@@ -23,26 +23,26 @@ type Message = InferSelectModel<typeof messages>;
 export interface AgentServiceInterface {
   setTemplateContext(
     sessionId: number,
-    template: import("../template/types").Template
+    template: import("../template/types").Template,
   ): Promise<void>;
   initializeConversation(
     userId: string,
-    templateId: number
+    templateId: number,
   ): Promise<Conversation>;
   getConversationContext(
-    conversationId: number
+    conversationId: number,
   ): Promise<ConversationContext | null>;
   addMessage(
     conversationId: number,
     sender: "user" | "assistant",
     content: string,
-    stepId: string
+    stepId: string,
   ): Promise<Message>;
   getMessagesForConversation(conversationId: number): Promise<Message[]>;
   generateResponse(
     conversationId: number,
     templatePrompt: TemplatePrompt,
-    stepId: string
+    stepId: string,
   ): Promise<LLMResponse>;
   callLLM(messages: AgentMessage[]): Promise<any>;
 }
@@ -60,7 +60,7 @@ export class AgentService implements AgentServiceInterface {
   constructor(
     config: AgentConfig,
     messageRepo: import("../db/repositories/messageRepository").MessageRepository,
-    db: any
+    db: any,
   ) {
     this.config = config;
     this.conversationRepo = new ConversationRepository(db);
@@ -80,7 +80,7 @@ export class AgentService implements AgentServiceInterface {
    */
   async setTemplateContext(
     sessionId: number,
-    template: import("../template/types").Template
+    template: import("../template/types").Template,
   ): Promise<void> {
     try {
       await this.conversationRepo.update(sessionId, {
@@ -98,7 +98,7 @@ export class AgentService implements AgentServiceInterface {
    */
   async initializeConversation(
     userId: string,
-    templateId: number
+    templateId: number,
   ): Promise<Conversation> {
     const conversationData = {
       userId,
@@ -113,7 +113,7 @@ export class AgentService implements AgentServiceInterface {
    * Retrieves the full conversation context (conversation + messages).
    */
   async getConversationContext(
-    conversationId: number
+    conversationId: number,
   ): Promise<ConversationContext | null> {
     const conversation = await this.conversationRepo.findById(conversationId);
     if (!conversation) return null;
@@ -131,7 +131,7 @@ export class AgentService implements AgentServiceInterface {
     conversationId: number,
     sender: "user" | "assistant",
     content: string,
-    stepId: string = "other"
+    stepId: string = "other",
   ): Promise<Message> {
     const messageData = {
       conversationId,
@@ -162,7 +162,7 @@ export class AgentService implements AgentServiceInterface {
   async generateResponse(
     conversationId: number,
     templatePrompt: TemplatePrompt,
-    stepId: string
+    stepId: string,
   ): Promise<LLMResponse> {
     const context = await this.getConversationContext(conversationId);
     if (!context) throw new Error("Conversation not found");
@@ -175,7 +175,7 @@ export class AgentService implements AgentServiceInterface {
     }));
     const trimmedHistory = trimContextWindow(
       history,
-      this.config.contextWindow
+      this.config.contextWindow,
     );
 
     // Format the new prompt
@@ -193,7 +193,7 @@ export class AgentService implements AgentServiceInterface {
       conversationId,
       "assistant",
       llmResponse.content,
-      stepId
+      stepId,
     );
 
     return llmResponse;

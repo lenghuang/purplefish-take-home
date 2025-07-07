@@ -42,7 +42,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
     coordinator = new InterviewCoordinator(
       mockTemplateManager,
       mockAgentService,
-      mockCLI
+      mockCLI,
     );
   });
 
@@ -67,7 +67,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
         id: 1,
       } as any);
       mockTemplateManager.getPromptForTemplateStep.mockReturnValue(
-        "Test question"
+        "Test question",
       );
       mockCLI.promptUser.mockResolvedValue("Test answer");
       mockAgentService.generateResponse.mockResolvedValue({
@@ -81,7 +81,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
       // Verify the flow (no template selection since we're providing it directly)
       expect(mockAgentService.initializeConversation).toHaveBeenCalledWith(
         "user123",
-        1
+        1,
       );
       expect(mockCLI.showConversationHistory).toHaveBeenCalled();
       expect(mockCLI.exit).toHaveBeenCalledWith("Interview finished. Goodbye!");
@@ -93,16 +93,16 @@ describe("InterviewCoordinator - Characterization Tests", () => {
       // Verify first question handling
       expect(mockTemplateManager.getPromptForTemplateStep).toHaveBeenCalledWith(
         1,
-        0
+        0,
       );
       expect(mockCLI.addMessage).toHaveBeenCalledWith(
         "assistant",
-        "Test question"
+        "Test question",
       );
       expect(mockAgentService.addMessage).toHaveBeenCalledWith(
         1,
         "assistant",
-        "Test question"
+        "Test question",
       );
       expect(mockCLI.showProgress).toHaveBeenCalledWith(1, 2);
       expect(mockCLI.promptUser).toHaveBeenCalledWith("Your response");
@@ -119,7 +119,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
           variables: {},
           userPrompt: "Test question",
           systemPrompt: expect.stringContaining("You are an HR screening bot"),
-        })
+        }),
       );
     });
 
@@ -152,7 +152,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
         id: 1,
       } as any);
       mockTemplateManager.getPromptForTemplateStep.mockReturnValue(
-        "What is your experience?"
+        "What is your experience?",
       );
       mockCLI.promptUser.mockResolvedValue("5 years");
 
@@ -161,7 +161,7 @@ describe("InterviewCoordinator - Characterization Tests", () => {
       // Verify the exact sequence matches the original main() function behavior
       expect(mockAgentService.initializeConversation).toHaveBeenCalledWith(
         "user123",
-        1
+        1,
       );
       expect(mockCLI.showConversationHistory).toHaveBeenCalledTimes(1);
       expect(mockCLI.exit).toHaveBeenCalledWith("Interview finished. Goodbye!");

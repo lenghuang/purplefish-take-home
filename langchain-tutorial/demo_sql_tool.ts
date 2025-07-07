@@ -99,8 +99,8 @@ const tools = toolkit.getTools();
 // This demonstrates how to interact with the database without involving the LLM agent.
 const rows = JSON.parse(
   await db.run(
-    "SELECT name, desired_salary FROM Candidates WHERE years_experience > 4"
-  )
+    "SELECT name, desired_salary FROM Candidates WHERE years_experience > 4",
+  ),
 );
 console.log("➡️  Direct SQL result:", rows); // [{ name: 'Bob', desired_salary: 130000 }]
 
@@ -135,7 +135,7 @@ async function ask(question: string) {
   // and generate a response.
   const out = await agent.invoke(
     { messages: [{ role: "user", content: question }] },
-    threadCfg
+    threadCfg,
   );
   // Extract and return the content of the agent's last message, which is its answer.
   return out.messages[out.messages.length - 1].content;
@@ -157,7 +157,7 @@ console.log("\n🧠 Agent answer:", await ask("Who wants more than $110k?"));
 // without needing to re-state "Bob".
 console.log(
   "\n🧠 Follow‑up answer:",
-  await ask("And what role is that candidate applying for?")
+  await ask("And what role is that candidate applying for?"),
 );
 
 /* -------------------------------------------------

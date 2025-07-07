@@ -44,7 +44,7 @@ export class TemplateManager {
         temperature: config.llm.temperature,
       },
       messageRepo,
-      db
+      db,
     );
     return new TemplateManager(agentService, db);
   }
@@ -109,7 +109,7 @@ export class TemplateManager {
         label: tpl.name,
         description: tpl.description,
         tags: tpl.tags,
-      })
+      }),
     );
   }
 
@@ -119,7 +119,7 @@ export class TemplateManager {
    */
   async selectAndSaveTemplate(
     templateId: TemplateId,
-    userId: string
+    userId: string,
   ): Promise<boolean> {
     if (!this.templates.has(templateId)) {
       return false;
@@ -154,7 +154,7 @@ export class TemplateManager {
   getPromptForTemplateStep(
     templateId: TemplateId,
     stepIndex: number,
-    previousAnswers?: Record<string, any>
+    previousAnswers?: Record<string, any>,
   ): string | null {
     const template = this.templates.get(templateId);
     if (!template || stepIndex < 0 || stepIndex >= template.steps.length) {

@@ -1,11 +1,11 @@
-import { openai } from "@ai-sdk/openai"
-import { streamText } from "ai"
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
 
 // Allow streaming responses up to 30 seconds
-export const maxDuration = 30
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  const { messages } = await req.json();
 
   // TODO: Integrate with your actual backend agentic workflows here.
   // The 'messages' array contains the conversation history.
@@ -16,17 +16,20 @@ export async function POST(req: Request) {
   try {
     // Using streamText from AI SDK for robust integration with useChat
     const result = streamText({
-      model: openai("gpt-4o"), // Using gpt-4o as a powerful model for demonstration
+      model: openai("gpt-4.1-nano"), // Using gpt-4o as a powerful model for demonstration
       messages,
       // TODO: Add tools or other AI SDK features as needed for your agentic workflows
-    })
+    });
 
-    return result.toDataStreamResponse()
+    return result.toDataStreamResponse();
   } catch (error) {
-    console.error("Error generating text with OpenAI API:", error)
-    return new Response(JSON.stringify({ error: "Failed to generate text with AI." }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    })
+    console.error("Error generating text with OpenAI API:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to generate text with AI." }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

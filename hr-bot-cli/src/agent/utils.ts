@@ -12,7 +12,7 @@ import {
  */
 export function trimContextWindow(
   messages: AgentMessage[],
-  contextWindow: number
+  contextWindow: number,
 ): AgentMessage[] {
   if (messages.length <= contextWindow) return messages;
   return messages.slice(-contextWindow);

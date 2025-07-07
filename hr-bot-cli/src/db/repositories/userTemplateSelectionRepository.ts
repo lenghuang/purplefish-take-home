@@ -35,7 +35,7 @@ export class UserTemplateSelectionRepository {
 
   async update(
     id: number,
-    data: Partial<typeof userTemplateSelection.$inferInsert>
+    data: Partial<typeof userTemplateSelection.$inferInsert>,
   ) {
     const [result] = await this.db
       .update(userTemplateSelection)

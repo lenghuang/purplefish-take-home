@@ -15,7 +15,7 @@ export class RepositoryUtils {
     table: any,
     queryTable: any,
     tableName: string,
-    id: number
+    id: number,
   ): Promise<any> {
     return queryTable[tableName].findFirst({
       where: eq(table.id, id),
@@ -30,7 +30,7 @@ export class RepositoryUtils {
     db: any,
     table: any,
     id: number,
-    data: any
+    data: any,
   ): Promise<any> {
     const result = await db
       .update(table)
