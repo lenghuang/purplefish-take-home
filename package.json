@@ -1,0 +1,22 @@
+{
+  "name": "purplefish-take-home",
+  "private": true,
+  "workspaces": [
+    "agent-core",
+    "hr-bot-cli",
+    "langchain-tutorial",
+    "site"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "pnpm -r run build"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.3.0",
+    "@langchain/langgraph": "^0.0.15",
+    "@langchain/langgraph-checkpoint-sqlite": "^0.1.5",
+    "zod": "^3.23.0",
+    "openai": "^4.0.0"
+  }
+}

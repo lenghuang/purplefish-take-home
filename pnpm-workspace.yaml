@@ -1,0 +1,5 @@
+packages:
+  - agent-core
+  - hr-bot-cli
+  - langchain-tutorial
+  - site
