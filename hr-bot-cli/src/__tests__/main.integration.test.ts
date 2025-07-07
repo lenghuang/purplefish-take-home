@@ -120,7 +120,7 @@ describe("Main Application Flow - Characterization Tests", () => {
       expect(AgentService).toHaveBeenCalledWith(
         agentConfig,
         mockMessageRepo,
-        mockDb
+        mockDb,
       );
     });
 
@@ -131,7 +131,7 @@ describe("Main Application Flow - Characterization Tests", () => {
       await mockAgentService.initializeConversation(userId, templateId);
       expect(mockAgentService.initializeConversation).toHaveBeenCalledWith(
         userId,
-        templateId
+        templateId,
       );
     });
 
@@ -164,7 +164,7 @@ describe("Main Application Flow - Characterization Tests", () => {
       expect(mockAgentService.addMessage).toHaveBeenCalledWith(
         conversationId,
         "user",
-        userInput
+        userInput,
       );
     });
 

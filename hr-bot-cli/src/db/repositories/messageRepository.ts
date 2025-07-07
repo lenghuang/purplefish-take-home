@@ -23,7 +23,7 @@ export class MessageRepository {
       messages,
       this.db.query,
       "messages",
-      id
+      id,
     );
   }
 
@@ -54,7 +54,7 @@ export class MessageRepository {
    */
   async getQuestionAnswerPairs(
     conversationId: number,
-    stepId?: string
+    stepId?: string,
   ): Promise<
     {
       questionId: number;
@@ -119,7 +119,7 @@ export class MessageRepository {
       throw new Error(
         `Database query failed in getQuestionAnswerPairs: ${
           error?.message || error
-        }`
+        }`,
       );
     }
   }

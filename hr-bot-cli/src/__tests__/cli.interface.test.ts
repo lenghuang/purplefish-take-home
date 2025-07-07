@@ -111,13 +111,13 @@ describe("CLIInterface - Characterization Tests", () => {
       mockRl.question.mockImplementation(
         (prompt: string, callback: (answer: string) => void) => {
           callback("1");
-        }
+        },
       );
 
       const result = await cli.selectTemplateDropdown(templates);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "\nSelect an interview template:"
+        "\nSelect an interview template:",
       );
       expect(consoleSpy).toHaveBeenCalledWith("  [1] Template 1");
       expect(consoleSpy).toHaveBeenCalledWith("  [2] Template 2");

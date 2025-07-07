@@ -57,7 +57,7 @@ const tools = [
       schema: z.object({
         city: z.string().describe("The city to get the weather for"),
       }),
-    }
+    },
   ),
 
   // Calculator tool - performs mathematical calculations
@@ -66,7 +66,7 @@ const tools = [
     async ({ expression }: { expression: string }) => {
       console.log(
         " [DEBUG] calculate tool called with expression:",
-        expression
+        expression,
       );
 
       try {
@@ -96,10 +96,10 @@ const tools = [
         expression: z
           .string()
           .describe(
-            "The mathematical expression to evaluate, e.g., '2 + 2' or '10 * (5 - 3)'"
+            "The mathematical expression to evaluate, e.g., '2 + 2' or '10 * (5 - 3)'",
           ),
       }),
-    }
+    },
   ),
 ];
 

@@ -67,7 +67,7 @@ describe("TemplateManager - Characterization Tests", () => {
 
       const result = await templateManager.selectAndSaveTemplate(
         firstTemplate.id,
-        "test-user"
+        "test-user",
       );
       expect(result).toBe(true);
 
@@ -78,7 +78,7 @@ describe("TemplateManager - Characterization Tests", () => {
     it("should return false for invalid template id", async () => {
       const result = await templateManager.selectAndSaveTemplate(
         999,
-        "test-user"
+        "test-user",
       );
       expect(result).toBe(false);
 
@@ -94,13 +94,13 @@ describe("TemplateManager - Characterization Tests", () => {
 
       const prompt = templateManager.getPromptForTemplateStep(
         templates[0].id,
-        -1
+        -1,
       );
       expect(prompt).toBeNull();
 
       const outOfBoundsPrompt = templateManager.getPromptForTemplateStep(
         templates[0].id,
-        999
+        999,
       );
       expect(outOfBoundsPrompt).toBeNull();
     });
@@ -117,7 +117,7 @@ describe("TemplateManager - Characterization Tests", () => {
 
       const prompt = templateManager.getPromptForTemplateStep(
         templates[0].id,
-        0
+        0,
       );
       expect(typeof prompt).toBe("string");
     });

@@ -17,7 +17,7 @@ export class InterviewCoordinator {
   constructor(
     private templateManager: TemplateManager,
     private agentService: AgentServiceInterface,
-    private cli: CLIInterface
+    private cli: CLIInterface,
   ) {}
 
   /**
@@ -33,13 +33,13 @@ export class InterviewCoordinator {
       // Set up template context
       await this.templateManager.selectAndSaveTemplate(
         selectedTemplate.id,
-        userId
+        userId,
       );
 
       // Initialize conversation
       const conversation = await this.agentService.initializeConversation(
         userId,
-        selectedTemplate.id
+        selectedTemplate.id,
       );
 
       // Run the interview loop
@@ -59,13 +59,13 @@ export class InterviewCoordinator {
    */
   async conductInterviewWithTemplate(
     userId: string,
-    selectedTemplate: Template
+    selectedTemplate: Template,
   ): Promise<void> {
     try {
       // Initialize conversation
       const conversation = await this.agentService.initializeConversation(
         userId,
-        selectedTemplate.id
+        selectedTemplate.id,
       );
 
       // Run the interview loop
@@ -86,7 +86,7 @@ export class InterviewCoordinator {
   private async runInterviewLoop(
     conversationId: number,
     selectedTemplate: Template,
-    userId: string
+    userId: string,
   ): Promise<void> {
     const systemPrompt = `You are an HR screening bot. You are interviewing a candidate for the position of "${
       selectedTemplate.role || selectedTemplate.name
@@ -100,7 +100,7 @@ export class InterviewCoordinator {
         selectedTemplate.id,
         stepIndex,
         totalSteps,
-        systemPrompt
+        systemPrompt,
       );
     }
   }
@@ -113,11 +113,11 @@ export class InterviewCoordinator {
     templateId: number,
     stepIndex: number,
     totalSteps: number,
-    systemPrompt?: string
+    systemPrompt?: string,
   ): Promise<void> {
     const prompt = this.templateManager.getPromptForTemplateStep(
       templateId,
-      stepIndex
+      stepIndex,
     );
     const promptToShow =
       typeof prompt === "string" && prompt ? prompt : "Let's get started!";
@@ -139,7 +139,7 @@ export class InterviewCoordinator {
     const llmResponse = await this.agentService.generateResponse(
       conversationId,
       templatePrompt,
-      stepId
+      stepId,
     );
     const questionText = llmResponse.content;
 
@@ -152,7 +152,7 @@ export class InterviewCoordinator {
       conversationId,
       "user",
       userInput,
-      stepId
+      stepId,
     );
   }
 }
@@ -164,7 +164,7 @@ export class InterviewCoordinator {
 export async function createInterviewCoordinator(
   templateManager: TemplateManager,
   agentService: AgentServiceInterface,
-  cli: CLIInterface
+  cli: CLIInterface,
 ): Promise<InterviewCoordinator> {
   return new InterviewCoordinator(templateManager, agentService, cli);
 }

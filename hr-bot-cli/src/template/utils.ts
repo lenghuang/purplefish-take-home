@@ -37,7 +37,7 @@ export function validateTemplate(template: Template): TemplateValidationResult {
  */
 export function getNextStepIndex(
   current: number,
-  template: Template
+  template: Template,
 ): number | null {
   if (current < template.steps.length - 1) {
     return current + 1;
@@ -60,7 +60,7 @@ export function getPreviousStepIndex(current: number): number | null {
  */
 export function getStepProgression(
   current: number,
-  template: Template
+  template: Template,
 ): StepProgression {
   return {
     currentStep: current + 1,
@@ -76,7 +76,7 @@ export function getStepProgression(
 export function generatePrompt(
   template: Template,
   stepIndex: number,
-  previousAnswers?: Record<string, any>
+  previousAnswers?: Record<string, any>,
 ): string {
   const step = template.steps[stepIndex];
   let prompt = `Role: ${template.role}\nStep: ${step.title}\n\n${step.prompt}`;

@@ -44,7 +44,7 @@ async function main() {
           description: undefined,
         }),
         createdAt: new Date(),
-      }))
+      })),
     );
 
     // Insert example conversation

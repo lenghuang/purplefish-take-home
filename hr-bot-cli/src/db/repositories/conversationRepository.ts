@@ -18,7 +18,7 @@ export class ConversationRepository {
       conversations,
       this.db.query,
       "conversations",
-      id
+      id,
     );
   }
 

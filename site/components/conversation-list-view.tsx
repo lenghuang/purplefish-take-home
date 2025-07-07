@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   type Conversation,
   type JobRole,
@@ -14,7 +20,7 @@ import {
   getJobRoles,
   createConversation,
   deleteConversation,
-} from "@/lib/data"
+} from "@/lib/data";
 import {
   ArrowLeftIcon,
   SearchIcon,
@@ -24,115 +30,134 @@ import {
   Trash2Icon,
   XIcon,
   SparklesIcon,
-} from "lucide-react"
+} from "lucide-react";
 
 type ConversationListViewProps = {
-  userRole: "hunter" | "poster"
-  onSelectConversation: (conversationId: string) => void
-  onBackToRoleSelection: () => void
-}
+  userRole: "hunter" | "poster";
+  onSelectConversation: (conversationId: string) => void;
+  onBackToRoleSelection: () => void;
+};
 
 export function ConversationListView({
   userRole,
   onSelectConversation,
   onBackToRoleSelection,
 }: ConversationListViewProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [jobRoles, setJobRoles] = useState<JobRole[]>([])
-  const [selectedJobRole, setSelectedJobRole] = useState<string>("")
-  const [editMode, setEditMode] = useState(false)
-  const [selectedConversationsToDelete, setSelectedConversationsToDelete] = useState<string[]>([])
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [filteredConversations, setFilteredConversations] = useState<
+    Conversation[]
+  >([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
+  const [selectedJobRole, setSelectedJobRole] = useState<string>("");
+  const [editMode, setEditMode] = useState(false);
+  const [selectedConversationsToDelete, setSelectedConversationsToDelete] =
+    useState<string[]>([]);
 
   // Load conversations based on user role
   useEffect(() => {
-    const allConversations = getConversations()
-    let roleConversations: Conversation[]
+    const allConversations = getConversations();
+    let roleConversations: Conversation[];
 
     if (userRole === "hunter") {
       // Job hunters see all their conversations
-      roleConversations = allConversations
+      roleConversations = allConversations;
     } else {
       // Job posters see only completed conversations (candidates)
-      roleConversations = allConversations.filter((conv) => conv.isDone)
+      roleConversations = allConversations.filter((conv) => conv.isDone);
     }
 
-    setConversations(roleConversations)
-    setJobRoles(getJobRoles())
+    setConversations(roleConversations);
+    setJobRoles(getJobRoles());
     if (getJobRoles().length > 0) {
-      setSelectedJobRole(getJobRoles()[0].id)
+      setSelectedJobRole(getJobRoles()[0].id);
     }
-  }, [userRole])
+  }, [userRole]);
 
   // Filter conversations based on search query
   useEffect(() => {
     if (searchQuery.trim() === "") {
-      setFilteredConversations(conversations)
+      setFilteredConversations(conversations);
     } else {
       const filtered = conversations.filter(
         (conv) =>
           conv.jobRole.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          conv.messages.some((msg) => msg.content.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-      setFilteredConversations(filtered)
+          conv.messages.some((msg) =>
+            msg.content.toLowerCase().includes(searchQuery.toLowerCase()),
+          ),
+      );
+      setFilteredConversations(filtered);
     }
-  }, [conversations, searchQuery])
+  }, [conversations, searchQuery]);
 
   const handleNewConversation = () => {
     if (selectedJobRole) {
-      const newConv = createConversation(selectedJobRole)
-      setConversations(getConversations())
-      onSelectConversation(newConv.id)
+      const newConv = createConversation(selectedJobRole);
+      setConversations(getConversations());
+      onSelectConversation(newConv.id);
     }
-  }
+  };
 
   const toggleEditMode = () => {
-    setEditMode((prev) => !prev)
-    setSelectedConversationsToDelete([])
-  }
+    setEditMode((prev) => !prev);
+    setSelectedConversationsToDelete([]);
+  };
 
-  const handleSelectConversationForDeletion = (id: string, checked: boolean) => {
+  const handleSelectConversationForDeletion = (
+    id: string,
+    checked: boolean,
+  ) => {
     if (checked) {
-      setSelectedConversationsToDelete((prev) => [...prev, id])
+      setSelectedConversationsToDelete((prev) => [...prev, id]);
     } else {
-      setSelectedConversationsToDelete((prev) => prev.filter((convId) => convId !== id))
+      setSelectedConversationsToDelete((prev) =>
+        prev.filter((convId) => convId !== id),
+      );
     }
-  }
+  };
 
   const handleDeleteSelectedConversations = () => {
     if (selectedConversationsToDelete.length === 0) {
-      alert("Please select conversations to delete.")
-      return
+      alert("Please select conversations to delete.");
+      return;
     }
-    if (confirm(`Are you sure you want to delete ${selectedConversationsToDelete.length} conversation(s)?`)) {
-      selectedConversationsToDelete.forEach((id) => deleteConversation(id))
-      setConversations(getConversations())
-      setEditMode(false)
-      setSelectedConversationsToDelete([])
+    if (
+      confirm(
+        `Are you sure you want to delete ${selectedConversationsToDelete.length} conversation(s)?`,
+      )
+    ) {
+      selectedConversationsToDelete.forEach((id) => deleteConversation(id));
+      setConversations(getConversations());
+      setEditMode(false);
+      setSelectedConversationsToDelete([]);
     }
-  }
+  };
 
   const formatLastMessage = (conv: Conversation) => {
-    if (conv.messages.length === 0) return "No messages yet"
-    const lastMessage = conv.messages[conv.messages.length - 1]
-    const preview = lastMessage.content.substring(0, 50)
-    return preview.length < lastMessage.content.length ? `${preview}...` : preview
-  }
+    if (conv.messages.length === 0) return "No messages yet";
+    const lastMessage = conv.messages[conv.messages.length - 1];
+    const preview = lastMessage.content.substring(0, 50);
+    return preview.length < lastMessage.content.length
+      ? `${preview}...`
+      : preview;
+  };
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
     if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } else if (diffInHours < 168) {
-      return date.toLocaleDateString([], { weekday: "short" })
+      return date.toLocaleDateString([], { weekday: "short" });
     } else {
-      return date.toLocaleDateString([], { month: "short", day: "numeric" })
+      return date.toLocaleDateString([], { month: "short", day: "numeric" });
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -142,11 +167,22 @@ export function ConversationListView({
           <Button variant="ghost" size="icon" onClick={onBackToRoleSelection}>
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold">{userRole === "hunter" ? "My Conversations" : "Candidate Results"}</h1>
+          <h1 className="text-xl font-semibold">
+            {userRole === "hunter" ? "My Conversations" : "Candidate Results"}
+          </h1>
         </div>
         {userRole === "hunter" && conversations.length > 0 && (
-          <Button variant="ghost" size="icon" onClick={toggleEditMode} aria-label="Manage conversations">
-            {editMode ? <XIcon className="h-5 w-5" /> : <SettingsIcon className="h-5 w-5" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleEditMode}
+            aria-label="Manage conversations"
+          >
+            {editMode ? (
+              <XIcon className="h-5 w-5" />
+            ) : (
+              <SettingsIcon className="h-5 w-5" />
+            )}
           </Button>
         )}
         {editMode && (
@@ -174,11 +210,18 @@ export function ConversationListView({
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Start a New AI Interview</h2>
-                  <p className="text-sm text-gray-600 mb-4">Get screened by our AI recruiter for your dream job role</p>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
+                    Start a New AI Interview
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Get screened by our AI recruiter for your dream job role
+                  </p>
                 </div>
                 <div className="space-y-3">
-                  <Select onValueChange={setSelectedJobRole} value={selectedJobRole}>
+                  <Select
+                    onValueChange={setSelectedJobRole}
+                    value={selectedJobRole}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose a job role to get started" />
                     </SelectTrigger>
@@ -226,7 +269,9 @@ export function ConversationListView({
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <MessageSquareIcon className="h-12 w-12 mb-4 text-gray-300" />
             <p className="text-lg font-medium">
-              {conversations.length === 0 ? "Ready to get started?" : "No matching conversations"}
+              {conversations.length === 0
+                ? "Ready to get started?"
+                : "No matching conversations"}
             </p>
             <p className="text-sm text-center px-8">
               {userRole === "hunter"
@@ -241,7 +286,9 @@ export function ConversationListView({
             {/* Section header for existing conversations */}
             {userRole === "hunter" && (
               <div className="px-4 py-3 bg-gray-50 border-b">
-                <h3 className="text-sm font-medium text-gray-700">Previous Conversations</h3>
+                <h3 className="text-sm font-medium text-gray-700">
+                  Previous Conversations
+                </h3>
               </div>
             )}
             <div className="divide-y">
@@ -255,7 +302,12 @@ export function ConversationListView({
                     <Checkbox
                       className="mr-4"
                       checked={selectedConversationsToDelete.includes(conv.id)}
-                      onCheckedChange={(checked) => handleSelectConversationForDeletion(conv.id, checked as boolean)}
+                      onCheckedChange={(checked) =>
+                        handleSelectConversationForDeletion(
+                          conv.id,
+                          checked as boolean,
+                        )
+                      }
                       aria-label={`Select conversation for ${conv.jobRole}`}
                     />
                   )}
@@ -267,11 +319,19 @@ export function ConversationListView({
                           : conv.jobRole}
                       </h3>
                       <div className="flex items-center space-x-2">
-                        {conv.isDone && <span className="text-xs text-green-600 font-medium">Done</span>}
-                        <span className="text-xs text-gray-500">{formatTime(conv.createdAt)}</span>
+                        {conv.isDone && (
+                          <span className="text-xs text-green-600 font-medium">
+                            Done
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          {formatTime(conv.createdAt)}
+                        </span>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 truncate">{formatLastMessage(conv)}</p>
+                    <p className="text-sm text-gray-600 truncate">
+                      {formatLastMessage(conv)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -280,5 +340,5 @@ export function ConversationListView({
         )}
       </ScrollArea>
     </div>
-  )
+  );
 }
