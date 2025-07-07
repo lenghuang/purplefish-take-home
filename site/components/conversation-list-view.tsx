@@ -7,14 +7,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  type Conversation,
-  type JobRole,
-  getConversations,
-  getJobRoles,
+  fetchConversations,
+  fetchJobRoles,
   createConversation,
   deleteConversation,
-} from "@/lib/data"
+  type Conversation,
+  type JobRole,
+} from "@/lib/api-client"
 import {
   ArrowLeftIcon,
   SearchIcon,
@@ -24,6 +25,9 @@ import {
   Trash2Icon,
   XIcon,
   SparklesIcon,
+  LoaderIcon,
+  AlertTriangleIcon,
+  WifiOffIcon,
 } from "lucide-react"
 
 type ConversationListViewProps = {
@@ -44,25 +48,48 @@ export function ConversationListView({
   const [selectedJobRole, setSelectedJobRole] = useState<string>("")
   const [editMode, setEditMode] = useState(false)
   const [selectedConversationsToDelete, setSelectedConversationsToDelete] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [backendError, setBackendError] = useState<string | null>(null)
+  const [isOffline, setIsOffline] = useState(false)
 
-  // Load conversations based on user role
+  // Load conversations and job roles from database
   useEffect(() => {
-    const allConversations = getConversations()
-    let roleConversations: Conversation[]
+    async function loadData() {
+      setLoading(true)
+      setBackendError(null)
+      setIsOffline(false)
 
-    if (userRole === "hunter") {
-      // Job hunters see all their conversations
-      roleConversations = allConversations
-    } else {
-      // Job posters see only completed conversations (candidates)
-      roleConversations = allConversations.filter((conv) => conv.isDone)
+      try {
+        const [conversationsData, jobRolesData] = await Promise.all([fetchConversations(userRole), fetchJobRoles()])
+
+        setConversations(conversationsData)
+        setJobRoles(jobRolesData)
+
+        if (jobRolesData.length > 0) {
+          setSelectedJobRole(jobRolesData[0].id)
+        }
+
+        // Clear any previous errors if successful
+        setBackendError(null)
+        setIsOffline(false)
+      } catch (error) {
+        console.warn("Error loading data, using fallback:", error)
+        setIsOffline(true)
+        setBackendError("Unable to connect to the server. Some features may be limited.")
+
+        // Still try to load job roles from fallback
+        const fallbackJobRoles = await fetchJobRoles()
+        setJobRoles(fallbackJobRoles)
+        if (fallbackJobRoles.length > 0) {
+          setSelectedJobRole(fallbackJobRoles[0].id)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setConversations(roleConversations)
-    setJobRoles(getJobRoles())
-    if (getJobRoles().length > 0) {
-      setSelectedJobRole(getJobRoles()[0].id)
-    }
+    loadData()
   }, [userRole])
 
   // Filter conversations based on search query
@@ -70,20 +97,29 @@ export function ConversationListView({
     if (searchQuery.trim() === "") {
       setFilteredConversations(conversations)
     } else {
-      const filtered = conversations.filter(
-        (conv) =>
-          conv.jobRole.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          conv.messages.some((msg) => msg.content.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
+      const filtered = conversations.filter((conv) => conv.jobRole.toLowerCase().includes(searchQuery.toLowerCase()))
       setFilteredConversations(filtered)
     }
   }, [conversations, searchQuery])
 
-  const handleNewConversation = () => {
-    if (selectedJobRole) {
-      const newConv = createConversation(selectedJobRole)
-      setConversations(getConversations())
-      onSelectConversation(newConv.id)
+  const handleNewConversation = async () => {
+    if (!selectedJobRole) return
+
+    setCreating(true)
+    try {
+      const newConv = await createConversation(selectedJobRole)
+      if (newConv) {
+        setConversations((prev) => [newConv, ...prev])
+        onSelectConversation(newConv.id)
+      } else {
+        // Handle creation failure gracefully
+        setBackendError("Unable to create conversation. Please check your connection and try again.")
+      }
+    } catch (error) {
+      console.warn("Error creating conversation:", error)
+      setBackendError("Failed to create conversation. Please try again later.")
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -100,21 +136,40 @@ export function ConversationListView({
     }
   }
 
-  const handleDeleteSelectedConversations = () => {
+  const handleDeleteSelectedConversations = async () => {
     if (selectedConversationsToDelete.length === 0) {
-      alert("Please select conversations to delete.")
       return
     }
+
     if (confirm(`Are you sure you want to delete ${selectedConversationsToDelete.length} conversation(s)?`)) {
-      selectedConversationsToDelete.forEach((id) => deleteConversation(id))
-      setConversations(getConversations())
-      setEditMode(false)
-      setSelectedConversationsToDelete([])
+      try {
+        const deleteResults = await Promise.all(
+          selectedConversationsToDelete.map((id) => deleteConversation(id).then((success) => ({ id, success }))),
+        )
+
+        // Only remove conversations that were successfully deleted
+        const successfullyDeleted = deleteResults.filter((result) => result.success).map((result) => result.id)
+        const failedDeletes = deleteResults.filter((result) => !result.success).map((result) => result.id)
+
+        if (successfullyDeleted.length > 0) {
+          setConversations((prev) => prev.filter((conv) => !successfullyDeleted.includes(conv.id)))
+        }
+
+        if (failedDeletes.length > 0) {
+          setBackendError(`Failed to delete ${failedDeletes.length} conversation(s). Please try again.`)
+        }
+
+        setEditMode(false)
+        setSelectedConversationsToDelete([])
+      } catch (error) {
+        console.warn("Error deleting conversations:", error)
+        setBackendError("Failed to delete conversations. Please check your connection and try again.")
+      }
     }
   }
 
   const formatLastMessage = (conv: Conversation) => {
-    if (conv.messages.length === 0) return "No messages yet"
+    if (!conv.messages || conv.messages.length === 0) return "No messages yet"
     const lastMessage = conv.messages[conv.messages.length - 1]
     const preview = lastMessage.content.substring(0, 50)
     return preview.length < lastMessage.content.length ? `${preview}...` : preview
@@ -134,6 +189,19 @@ export function ConversationListView({
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen bg-white">
+        <div className="flex items-center justify-center flex-1">
+          <div className="text-center">
+            <LoaderIcon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading conversations...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white">
       {/* Header */}
@@ -142,25 +210,40 @@ export function ConversationListView({
           <Button variant="ghost" size="icon" onClick={onBackToRoleSelection}>
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold">{userRole === "hunter" ? "My Conversations" : "Candidate Results"}</h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-semibold">
+              {userRole === "hunter" ? "My Conversations" : "Candidate Results"}
+            </h1>
+            {isOffline && <WifiOffIcon className="h-4 w-4 text-orange-500" title="Offline mode" />}
+          </div>
         </div>
         {userRole === "hunter" && conversations.length > 0 && (
-          <Button variant="ghost" size="icon" onClick={toggleEditMode} aria-label="Manage conversations">
-            {editMode ? <XIcon className="h-5 w-5" /> : <SettingsIcon className="h-5 w-5" />}
-          </Button>
-        )}
-        {editMode && (
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={handleDeleteSelectedConversations}
-            disabled={selectedConversationsToDelete.length === 0}
-            aria-label="Delete selected conversations"
-          >
-            <Trash2Icon className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            {editMode && (
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={handleDeleteSelectedConversations}
+                disabled={selectedConversationsToDelete.length === 0}
+                aria-label="Delete selected conversations"
+              >
+                <Trash2Icon className="h-5 w-5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={toggleEditMode} aria-label="Manage conversations">
+              {editMode ? <XIcon className="h-5 w-5" /> : <SettingsIcon className="h-5 w-5" />}
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Error Alert */}
+      {backendError && (
+        <Alert className="m-4 border-orange-200 bg-orange-50">
+          <AlertTriangleIcon className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">{backendError}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Prominent New Conversation Section - Always visible for hunters */}
       {userRole === "hunter" && (
@@ -176,6 +259,11 @@ export function ConversationListView({
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 mb-2">Start a New AI Interview</h2>
                   <p className="text-sm text-gray-600 mb-4">Get screened by our AI recruiter for your dream job role</p>
+                  {isOffline && (
+                    <p className="text-xs text-orange-600 mb-2">
+                      ⚠️ Limited functionality - some features may not work while offline
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <Select onValueChange={setSelectedJobRole} value={selectedJobRole}>
@@ -193,10 +281,14 @@ export function ConversationListView({
                   <Button
                     onClick={handleNewConversation}
                     className="w-full h-12 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    disabled={!selectedJobRole}
+                    disabled={!selectedJobRole || creating || isOffline}
                   >
-                    <PlusIcon className="mr-2 h-5 w-5" />
-                    Start AI Interview
+                    {creating ? (
+                      <LoaderIcon className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <PlusIcon className="mr-2 h-5 w-5" />
+                    )}
+                    {creating ? "Creating..." : isOffline ? "Unavailable Offline" : "Start AI Interview"}
                   </Button>
                 </div>
               </div>
@@ -231,7 +323,9 @@ export function ConversationListView({
             <p className="text-sm text-center px-8">
               {userRole === "hunter"
                 ? conversations.length === 0
-                  ? "Choose a job role above to start your first AI interview"
+                  ? isOffline
+                    ? "Connect to the internet to start your first AI interview"
+                    : "Choose a job role above to start your first AI interview"
                   : "Try adjusting your search terms"
                 : "Completed candidate conversations will appear here"}
             </p>
@@ -267,8 +361,10 @@ export function ConversationListView({
                           : conv.jobRole}
                       </h3>
                       <div className="flex items-center space-x-2">
-                        {conv.isDone && <span className="text-xs text-green-600 font-medium">Done</span>}
-                        <span className="text-xs text-gray-500">{formatTime(conv.createdAt)}</span>
+                        {conv.status === "completed" && (
+                          <span className="text-xs text-green-600 font-medium">Done</span>
+                        )}
+                        <span className="text-xs text-gray-500">{formatTime(conv.updatedAt)}</span>
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 truncate">{formatLastMessage(conv)}</p>

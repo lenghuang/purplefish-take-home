@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { ConversationListView } from "@/components/conversation-list-view"
 import { ChatView } from "@/components/chat-view"
 import { RoleSelectionPage } from "@/components/role-selection-page"
-import { type Conversation, getConversation } from "@/lib/data"
 
 type AppView = "role-selection" | "conversation-list" | "chat"
 type UserRole = "hunter" | "poster"
@@ -13,30 +12,18 @@ export default function HomePage() {
   const [currentView, setCurrentView] = useState<AppView>("role-selection")
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
 
-  // Callback to refresh the current conversation
-  const refreshCurrentConversation = useCallback(() => {
-    if (selectedConversationId) {
-      setCurrentConversation(getConversation(selectedConversationId) || null)
-    }
-  }, [selectedConversationId])
-
-  // Effect to update currentConversation when selectedConversationId changes
-  useEffect(() => {
-    if (selectedConversationId) {
-      setCurrentConversation(getConversation(selectedConversationId) || null)
-    } else {
-      setCurrentConversation(null)
-    }
-  }, [selectedConversationId])
+  // Callback to refresh conversations (can be used to trigger re-fetching)
+  const refreshConversations = useCallback(() => {
+    // This will trigger re-renders in child components that depend on conversation data
+    // The actual data fetching happens in the components themselves
+  }, [])
 
   // Handle role selection from the landing page
   const handleSelectRole = (role: UserRole) => {
     setUserRole(role)
     setCurrentView("conversation-list")
     setSelectedConversationId(null)
-    setCurrentConversation(null)
   }
 
   // Handle conversation selection - go to chat view
@@ -49,7 +36,6 @@ export default function HomePage() {
   const handleBackToConversationList = () => {
     setCurrentView("conversation-list")
     setSelectedConversationId(null)
-    setCurrentConversation(null)
   }
 
   // Handle back to role selection
@@ -57,7 +43,6 @@ export default function HomePage() {
     setCurrentView("role-selection")
     setUserRole(null)
     setSelectedConversationId(null)
-    setCurrentConversation(null)
   }
 
   return (
@@ -72,11 +57,11 @@ export default function HomePage() {
         />
       )}
 
-      {currentView === "chat" && currentConversation && (
+      {currentView === "chat" && selectedConversationId && (
         <ChatView
-          conversation={currentConversation}
+          conversationId={selectedConversationId}
           onBack={handleBackToConversationList}
-          onConversationUpdate={refreshCurrentConversation}
+          onConversationUpdate={refreshConversations}
         />
       )}
     </main>
