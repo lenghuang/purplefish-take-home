@@ -1,12 +1,18 @@
 import { db } from '../index';
 import { conversations, messages, interviewStates } from '../schema';
 import { eq, desc } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import type {
   InterviewState,
   Message,
   Conversation,
   ConversationSummary,
 } from '../../lib/services/local-storage-service';
+
+// Utility to generate a unique interview state ID
+export function generateInterviewStateId() {
+  return nanoid();
+}
 
 // Utility to serialize InterviewState for DB (excluding id/conversationId)
 function serializeInterviewState(state: InterviewState, id: string, conversationId: string) {
@@ -28,7 +34,7 @@ function deserializeInterviewState(row: any): InterviewState {
 // Utility to serialize Message for DB
 function serializeMessage(msg: Message, conversationId: string) {
   return {
-    id: msg.id,
+    id: nanoid(),
     conversationId,
     role: msg.role,
     content: msg.content,
@@ -49,37 +55,39 @@ class DrizzleService {
    * Atomically creates or updates a conversation.
    * If a race condition causes a unique constraint violation on create, falls back to update.
    */
+  /**
+   * Upsert a conversation: if the id exists, update; otherwise, create with a new nanoid id.
+   * If id is provided and exists, update. If not, create with a new id.
+   */
   async upsertConversation(
-    id: string,
+    id: string | undefined,
     state: InterviewState,
     message: Message,
   ): Promise<Conversation | null> {
-    try {
-      // Try to create; if it fails due to unique constraint, update instead
-      return await this.createConversation(id, state, message);
-    } catch (error: any) {
-      if (
-        error &&
-        typeof error.message === 'string' &&
-        error.message.includes('UNIQUE constraint failed')
-      ) {
-        // Someone else created it at the same time; update instead
+    if (id) {
+      const existing = await this.getConversation(id);
+      if (existing) {
+        // Update existing conversation
         return await this.updateConversation(id, state, message);
       }
-      throw error;
     }
+    // Create new conversation with a generated id
+    return await this.createConversation(state, message);
   }
   // Create a new conversation with initial state and message
+  /**
+   * Create a new conversation and interview state with a generated nanoid id.
+   */
   async createConversation(
-    id: string,
     initialState: InterviewState,
     initialMessage: Message,
   ): Promise<Conversation> {
+    const id = generateInterviewStateId();
     const now = new Date();
     // All inserts in a transaction for atomicity
-    await db.transaction(async (tx) => {
-      await tx.insert(interviewStates).values(serializeInterviewState(initialState, id, id));
-      await tx.insert(conversations).values({
+    await db.transaction((tx) => {
+      tx.insert(interviewStates).values(serializeInterviewState(initialState, id, id));
+      tx.insert(conversations).values({
         id: id,
         candidateName: initialState.candidateName ?? null,
         createdAt: now,
@@ -94,7 +102,7 @@ class DrizzleService {
             .substring(0, 100) ?? null,
         stateId: id,
       } as typeof conversations.$inferInsert);
-      await tx.insert(messages).values(serializeMessage(initialMessage, id));
+      tx.insert(messages).values(serializeMessage(initialMessage, id));
     });
 
     // Return the full conversation object
@@ -144,9 +152,8 @@ class DrizzleService {
     );
     const now = new Date();
     // All updates/inserts in a transaction for atomicity
-    await db.transaction(async (tx) => {
-      await tx
-        .update(interviewStates)
+    await db.transaction((tx) => {
+      tx.update(interviewStates)
         .set({ ...newState })
         .where(eq(interviewStates.id, id));
       // Update conversation fields
@@ -162,10 +169,10 @@ class DrizzleService {
           .trim()
           .substring(0, 100);
       }
-      await tx.update(conversations).set(updateFields).where(eq(conversations.id, id));
+      tx.update(conversations).set(updateFields).where(eq(conversations.id, id));
       // Insert new message if provided
       if (newMessage) {
-        await tx.insert(messages).values(serializeMessage(newMessage, id));
+        tx.insert(messages).values(serializeMessage(newMessage, id));
       }
     });
 
