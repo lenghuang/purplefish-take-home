@@ -18,6 +18,8 @@ import {
 import { clientStorageService } from '@/lib/services/client-storage-service';
 import type { ConversationSummary } from '@/lib/services/local-storage-service';
 
+import { nanoid } from 'nanoid';
+
 export default function HomePage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const router = useRouter();
@@ -45,7 +47,7 @@ export default function HomePage() {
 
   const startNewInterview = () => {
     // Generate a new conversation ID and navigate to chat
-    const newId = Math.random().toString(36).substring(2, 15);
+    const newId = nanoid();
     router.push(`/chat/${newId}`);
   };
 
