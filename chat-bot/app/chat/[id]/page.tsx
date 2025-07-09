@@ -1,38 +1,51 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { v4 as createId } from "uuid" // Import createId from uuid package
+import type React from "react";
+import { v4 as createId } from "uuid"; // Import createId from uuid package
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { useChat } from "ai/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from "lucide-react"
-import { localStorageService, type InterviewState, type Message } from "@/lib/services/local-storage-service"
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useChat } from "ai/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  User,
+  Bot,
+  CheckCircle,
+  XCircle,
+  ArrowLeft,
+  Home,
+} from "lucide-react";
+import {
+  localStorageService,
+  type InterviewState,
+  type Message,
+} from "@/lib/services/local-storage-service";
 
 const initialAssistantMessage: Message = {
   id: "initial-assistant-message", // Unique ID for the initial message
   role: "assistant",
-  content: "Hello! Are you currently open to discussing this nursing position with us today?",
-}
+  content:
+    "Hello! Are you currently open to discussing this nursing position with us today?",
+};
 
 export default function ChatPage() {
-  const router = useRouter()
-  const params = useParams()
-  const conversationId = params.id as string
+  const router = useRouter();
+  const params = useParams();
+  const conversationId = params.id as string;
 
   const [interviewState, setInterviewState] = useState<InterviewState>({
     stage: "greeting",
     completed: false,
-  })
-  const [isNewConversation, setIsNewConversation] = useState(true)
-  const [isLoadingPage, setIsLoadingPage] = useState(true) // New loading state for page data
+  });
+  const [isNewConversation, setIsNewConversation] = useState(true);
+  const [isLoadingPage, setIsLoadingPage] = useState(true); // New loading state for page data
 
-  const interviewStateRef = useRef<InterviewState>(interviewState)
-  const viewportRef = useRef<HTMLDivElement>(null)
+  const interviewStateRef = useRef<InterviewState>(interviewState);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   // Declare createId function here if needed
   // const createId = () => Math.random().toString(36).substr(2, 9);
@@ -50,22 +63,22 @@ export default function ChatPage() {
     initialMessages: [initialAssistantMessage], // This is a fallback, actual messages loaded from service
     body: {
       get interviewState() {
-        return interviewStateRef.current
+        return interviewStateRef.current;
       },
       conversationId: conversationId,
     },
     streamProtocol: "text",
     onFinish: async (message) => {
-      console.log("🎯 onFinish called!")
-      console.log("Message finished:", message.content)
+      console.log("🎯 onFinish called!");
+      console.log("Message finished:", message.content);
 
       try {
-        const stateMatch = message.content.match(/\[STATE:(.*?)\]/s)
-        let newState = interviewStateRef.current // Default to current state if no state in message
+        const stateMatch = message.content.match(/\[STATE:(.*?)\]/s);
+        let newState = interviewStateRef.current; // Default to current state if no state in message
         if (stateMatch) {
-          newState = JSON.parse(stateMatch[1])
-          console.log("Parsed state from message:", newState)
-          setInterviewState(newState)
+          newState = JSON.parse(stateMatch[1]);
+          console.log("Parsed state from message:", newState);
+          setInterviewState(newState);
         }
 
         // Save the assistant message and updated state to service
@@ -73,57 +86,62 @@ export default function ChatPage() {
           id: message.id,
           role: message.role as "assistant",
           content: message.content,
-        })
+        });
       } catch (error) {
-        console.error("Failed to save message or update state:", error)
+        console.error("Failed to save message or update state:", error);
       }
     },
     onError: (error) => {
-      console.error("🚨 useChat error:", error)
+      console.error("🚨 useChat error:", error);
     },
-  })
+  });
 
   // Check if the interview is done (completed or ended early)
-  const isInterviewDone = interviewState.completed || interviewState.endedEarly
+  const isInterviewDone = interviewState.completed || interviewState.endedEarly;
 
   // Update the ref whenever state changes
   useEffect(() => {
-    interviewStateRef.current = interviewState
-  }, [interviewState])
+    interviewStateRef.current = interviewState;
+  }, [interviewState]);
 
   // Load existing conversation or create new one
   useEffect(() => {
     const loadOrCreateConversation = async () => {
-      setIsLoadingPage(true)
+      setIsLoadingPage(true);
       try {
-        const conversation = await localStorageService.getConversation(conversationId)
+        const conversation =
+          await localStorageService.getConversation(conversationId);
 
         if (conversation) {
           // Existing conversation
-          setMessages(conversation.messages)
-          setInterviewState(conversation.state)
-          setIsNewConversation(false)
+          setMessages(conversation.messages);
+          setInterviewState(conversation.state);
+          setIsNewConversation(false);
         } else {
           // New conversation - create it in service with initial message
-          await localStorageService.createConversation(conversationId, interviewState, initialAssistantMessage)
-          setMessages([initialAssistantMessage]) // Set initial message for new chat
-          setIsNewConversation(true)
+          await localStorageService.createConversation(
+            conversationId,
+            interviewState,
+            initialAssistantMessage,
+          );
+          setMessages([initialAssistantMessage]); // Set initial message for new chat
+          setIsNewConversation(true);
         }
       } catch (error) {
-        console.error("Failed to load or create conversation:", error)
+        console.error("Failed to load or create conversation:", error);
         // Fallback to initial state if service fails
-        setMessages([initialAssistantMessage])
-        setInterviewState({ stage: "greeting", completed: false })
-        setIsNewConversation(true)
+        setMessages([initialAssistantMessage]);
+        setInterviewState({ stage: "greeting", completed: false });
+        setIsNewConversation(true);
       } finally {
-        setIsLoadingPage(false)
+        setIsLoadingPage(false);
       }
-    }
+    };
 
     if (conversationId) {
-      loadOrCreateConversation()
+      loadOrCreateConversation();
     }
-  }, [conversationId, setMessages]) // Depend on conversationId and setMessages
+  }, [conversationId, setMessages]); // Depend on conversationId and setMessages
 
   // Autoscroll: Scroll to bottom when messages change
   useEffect(() => {
@@ -133,19 +151,19 @@ export default function ChatPage() {
           viewportRef.current.scrollTo({
             top: viewportRef.current.scrollHeight,
             behavior: "smooth",
-          })
+          });
         }
-      }, 100)
+      }, 100);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     }
-  }, [messages])
+  }, [messages]);
 
   // Custom submit handler to save user messages
   const handleCustomSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!input.trim() || isChatLoading || isInterviewDone) return
+    if (!input.trim() || isChatLoading || isInterviewDone) return;
 
     try {
       // Save user message to service
@@ -157,14 +175,14 @@ export default function ChatPage() {
           role: "user",
           content: input,
         },
-      )
+      );
     } catch (error) {
-      console.error("Failed to save user message:", error)
+      console.error("Failed to save user message:", error);
     }
 
     // Continue with normal chat submission
-    handleSubmit(e)
-  }
+    handleSubmit(e);
+  };
 
   const getStageDisplay = (stage: string) => {
     const stages = {
@@ -178,18 +196,21 @@ export default function ChatPage() {
       experience_details: "Experience Details",
       alternative_experience: "Alternative Experience",
       completed: "Interview Complete",
-    }
-    return stages[stage as keyof typeof stages] || stage
-  }
+    };
+    return stages[stage as keyof typeof stages] || stage;
+  };
 
   const getStatusBadge = () => {
     if (interviewState.completed) {
       return (
-        <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
+        <Badge
+          variant="default"
+          className="text-xs bg-green-600 hover:bg-green-700"
+        >
           <CheckCircle className="h-3 w-3 mr-1" />
           Done
         </Badge>
-      )
+      );
     }
     if (interviewState.endedEarly) {
       return (
@@ -197,14 +218,14 @@ export default function ChatPage() {
           <XCircle className="h-3 w-3 mr-1" />
           Ended Early
         </Badge>
-      )
+      );
     }
     return (
       <Badge variant="outline" className="text-xs">
         {getStageDisplay(interviewState.stage)}
       </Badge>
-    )
-  }
+    );
+  };
 
   if (isLoadingPage) {
     return (
@@ -214,7 +235,7 @@ export default function ChatPage() {
           <p className="text-gray-500">Loading conversation...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -223,7 +244,12 @@ export default function ChatPage() {
       <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="p-2"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -233,16 +259,28 @@ export default function ChatPage() {
               <div className="flex items-center gap-2 mt-1">
                 {getStatusBadge()}
                 {interviewState.candidateName && (
-                  <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
+                  <span className="text-sm text-gray-500">
+                    • {interviewState.candidateName}
+                  </span>
                 )}
               </div>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => router.push("/history")} className="text-xs">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/history")}
+              className="text-xs"
+            >
               History
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/")} className="text-xs">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/")}
+              className="text-xs"
+            >
               <Home className="h-4 w-4" />
             </Button>
           </div>
@@ -258,13 +296,21 @@ export default function ChatPage() {
                 key={message.id}
                 className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                <div
+                  className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === "user" ? "bg-blue-600 text-white" : "bg-white border-2 border-gray-200"
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white border-2 border-gray-200"
                     }`}
                   >
-                    {message.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4 text-gray-600" />}
+                    {message.role === "user" ? (
+                      <User className="h-4 w-4" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-gray-600" />
+                    )}
                   </div>
                   <div
                     className={`rounded-2xl px-4 py-3 ${
@@ -273,7 +319,9 @@ export default function ChatPage() {
                         : "bg-white border border-gray-200 text-gray-900"
                     }`}
                   >
-                    <p className="text-sm leading-relaxed">{message.content.replace(/\[STATE:.*?\]/s, "").trim()}</p>
+                    <p className="text-sm leading-relaxed">
+                      {message.content.replace(/\[STATE:.*?\]/s, "").trim()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -298,7 +346,9 @@ export default function ChatPage() {
             <div className="text-center">
               <div
                 className={`p-4 rounded-lg ${
-                  interviewState.completed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+                  interviewState.completed
+                    ? "bg-green-50 border border-green-200"
+                    : "bg-red-50 border border-red-200"
                 }`}
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -307,17 +357,30 @@ export default function ChatPage() {
                   ) : (
                     <XCircle className="h-5 w-5 text-red-600" />
                   )}
-                  <p className={`font-medium ${interviewState.completed ? "text-green-800" : "text-red-800"}`}>
-                    {interviewState.completed ? "Interview Completed Successfully!" : "Interview Ended Early"}
+                  <p
+                    className={`font-medium ${interviewState.completed ? "text-green-800" : "text-red-800"}`}
+                  >
+                    {interviewState.completed
+                      ? "Interview Completed Successfully!"
+                      : "Interview Ended Early"}
                   </p>
                 </div>
-                {interviewState.endReason && <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>}
+                {interviewState.endReason && (
+                  <p className="text-sm text-gray-600 mb-3">
+                    {interviewState.endReason}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500">
-                  This conversation is now marked as done. You can review it in your history.
+                  This conversation is now marked as done. You can review it in
+                  your history.
                 </p>
               </div>
               <div className="flex gap-2 mt-3">
-                <Button onClick={() => router.push("/history")} variant="outline" className="flex-1">
+                <Button
+                  onClick={() => router.push("/history")}
+                  variant="outline"
+                  className="flex-1"
+                >
                   View History
                 </Button>
                 <Button onClick={() => router.push("/")} className="flex-1">
@@ -339,12 +402,16 @@ export default function ChatPage() {
                 disabled={isChatLoading || !input.trim() || isInterviewDone}
                 className="h-12 px-6 rounded-full"
               >
-                {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+                {isChatLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Send"
+                )}
               </Button>
             </form>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -5,6 +5,7 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 ## Features
 
 ### Core Functionality
+
 - **Mobile-First Design**: Optimized for smartphone interviews
 - **Dynamic Conversation Flow**: Follows nursing-specific interview script with conditional logic
 - **Early Exit Scenarios**: Handles salary mismatches, licensing issues, and disinterest
@@ -13,6 +14,7 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 - **Conversation History**: View and resume past interview sessions
 
 ### Interview Flow
+
 1. **Interest Check**: Confirms candidate availability
 2. **Basic Information**: Collects name and position interest
 3. **Salary Discussion**: Validates salary expectations ($72k max)
@@ -31,7 +33,8 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - OpenAI API key
 
 ### Installation
@@ -67,23 +70,27 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 ## Design Decisions
 
 ### Mobile-First Approach
+
 - **Single Column Layout**: Eliminates desktop sidebar complexity
 - **Touch Optimization**: Large buttons (48px) and input fields
 - **Sticky Header**: Always-visible progress and navigation
 - **Conversation History**: Slide-in panel for past interviews
 
 ### Conversation Logic
+
 - **State Machine**: Clear progression through interview stages
 - **Pattern Matching**: Robust extraction of names, salaries, and responses
 - **Conditional Branching**: Different paths based on candidate responses
 - **Error Handling**: Graceful handling of unexpected inputs
 
 ### Data Persistence
+
 - **localStorage**: Client-side conversation history
 - **State Embedding**: Interview state hidden in message metadata
 - **Resume Capability**: Load and continue previous conversations
 
 ### AI Integration
+
 - **Streaming Responses**: Real-time message delivery
 - **Context Awareness**: Maintains conversation context throughout
 - **Professional Tone**: Consistent, encouraging interview style
@@ -100,28 +107,32 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 ## Technical Highlights
 
 ### Intelligent Data Extraction
+
 \`\`\`typescript
 function extractStructuredData(text: string, currentState: InterviewState) {
-  // Pattern matching for names, salaries, license info
-  // Context-aware parsing based on interview stage
-  // Robust handling of natural language variations
+// Pattern matching for names, salaries, license info
+// Context-aware parsing based on interview stage
+// Robust handling of natural language variations
 }
 \`\`\`
 
 ### Conditional Flow Management
+
 \`\`\`typescript
 const stagePrompts = {
-  salary_negotiation: `Their desired salary is above our max. Ask if they'd accept $${MAX_SALARY}.`,
-  license_timeline: "Ask when they expect to get their RN license.",
-  // ... stage-specific prompts
+salary_negotiation: `Their desired salary is above our max. Ask if they'd accept $${MAX_SALARY}.`,
+license_timeline: "Ask when they expect to get their RN license.",
+// ... stage-specific prompts
 }
 \`\`\`
 
 ### Mobile-Optimized UI
+
 \`\`\`tsx
 // Touch-friendly input with proper sizing
 <Input className="h-12 text-base rounded-full" />
 // Sticky positioning for mobile navigation
+
 <div className="sticky top-0 z-10 bg-white border-b">
 \`\`\`
 
@@ -136,6 +147,7 @@ const stagePrompts = {
 ## Testing
 
 The chatbot handles various scenarios:
+
 - ✅ Interested candidates with valid credentials
 - ✅ Salary negotiations and rejections
 - ✅ License verification and timelines
