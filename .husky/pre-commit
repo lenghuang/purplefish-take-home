@@ -1,4 +1,5 @@
 #!/bin/sh
+echo "Husky pre-commit hook running..."
 . "$(dirname "$0")/_/husky.sh"
 
 npm --prefix chat-bot run lint-staged
