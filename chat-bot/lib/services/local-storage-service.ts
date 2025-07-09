@@ -16,7 +16,7 @@ export interface InterviewState {
 
 export interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -43,16 +43,16 @@ export interface ConversationSummary {
 }
 
 class LocalStorageService {
-  private readonly CONVERSATIONS_KEY = "interview-conversations-v2"; // Updated key to avoid conflicts
+  private readonly CONVERSATIONS_KEY = 'interview-conversations-v2'; // Updated key to avoid conflicts
 
   private getStoredConversations(): Conversation[] {
-    if (typeof window === "undefined") return [];
+    if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem(this.CONVERSATIONS_KEY);
     return stored ? JSON.parse(stored) : [];
   }
 
   private setStoredConversations(conversations: Conversation[]): void {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     localStorage.setItem(this.CONVERSATIONS_KEY, JSON.stringify(conversations));
   }
 
@@ -70,7 +70,7 @@ class LocalStorageService {
       endedEarly: initialState.endedEarly,
       endReason: initialState.endReason,
       lastMessage: initialMessage.content
-        .replace(/\[STATE:.*?\]/s, "")
+        .replace(/\[STATE:.*?\]/s, '')
         .trim()
         .substring(0, 100),
       messages: [initialMessage],
@@ -104,7 +104,7 @@ class LocalStorageService {
     if (newMessage) {
       conversation.messages.push(newMessage);
       conversation.lastMessage = newMessage.content
-        .replace(/\[STATE:.*?\]/s, "")
+        .replace(/\[STATE:.*?\]/s, '')
         .trim()
         .substring(0, 100);
     }

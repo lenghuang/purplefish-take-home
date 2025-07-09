@@ -1,35 +1,26 @@
-"use client";
+'use client';
 
-import type React from "react";
-import { v4 as createId } from "uuid"; // Import createId from uuid package
+import type React from 'react';
+import { v4 as createId } from 'uuid'; // Import createId from uuid package
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useChat } from "ai/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import {
-  Loader2,
-  User,
-  Bot,
-  CheckCircle,
-  XCircle,
-  ArrowLeft,
-  Home,
-} from "lucide-react";
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useChat } from 'ai/react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
 import {
   localStorageService,
   type InterviewState,
   type Message,
-} from "@/lib/services/local-storage-service";
+} from '@/lib/services/local-storage-service';
 
 const initialAssistantMessage: Message = {
-  id: "initial-assistant-message", // Unique ID for the initial message
-  role: "assistant",
-  content:
-    "Hello! Are you currently open to discussing this nursing position with us today?",
+  id: 'initial-assistant-message', // Unique ID for the initial message
+  role: 'assistant',
+  content: 'Hello! Are you currently open to discussing this nursing position with us today?',
 };
 
 export default function ChatPage() {
@@ -38,7 +29,7 @@ export default function ChatPage() {
   const conversationId = params.id as string;
 
   const [interviewState, setInterviewState] = useState<InterviewState>({
-    stage: "greeting",
+    stage: 'greeting',
     completed: false,
   });
   const [isNewConversation, setIsNewConversation] = useState(true);
@@ -58,7 +49,7 @@ export default function ChatPage() {
     isLoading: isChatLoading,
     setMessages,
   } = useChat({
-    api: "/api/chat",
+    api: '/api/chat',
     id: conversationId,
     initialMessages: [initialAssistantMessage], // This is a fallback, actual messages loaded from service
     body: {
@@ -67,32 +58,32 @@ export default function ChatPage() {
       },
       conversationId: conversationId,
     },
-    streamProtocol: "text",
+    streamProtocol: 'text',
     onFinish: async (message) => {
-      console.log("🎯 onFinish called!");
-      console.log("Message finished:", message.content);
+      console.log('🎯 onFinish called!');
+      console.log('Message finished:', message.content);
 
       try {
         const stateMatch = message.content.match(/\[STATE:(.*?)\]/s);
         let newState = interviewStateRef.current; // Default to current state if no state in message
         if (stateMatch) {
           newState = JSON.parse(stateMatch[1]);
-          console.log("Parsed state from message:", newState);
+          console.log('Parsed state from message:', newState);
           setInterviewState(newState);
         }
 
         // Save the assistant message and updated state to service
         await localStorageService.updateConversation(conversationId, newState, {
           id: message.id,
-          role: message.role as "assistant",
+          role: message.role as 'assistant',
           content: message.content,
         });
       } catch (error) {
-        console.error("Failed to save message or update state:", error);
+        console.error('Failed to save message or update state:', error);
       }
     },
     onError: (error) => {
-      console.error("🚨 useChat error:", error);
+      console.error('🚨 useChat error:', error);
     },
   });
 
@@ -109,8 +100,7 @@ export default function ChatPage() {
     const loadOrCreateConversation = async () => {
       setIsLoadingPage(true);
       try {
-        const conversation =
-          await localStorageService.getConversation(conversationId);
+        const conversation = await localStorageService.getConversation(conversationId);
 
         if (conversation) {
           // Existing conversation
@@ -128,10 +118,10 @@ export default function ChatPage() {
           setIsNewConversation(true);
         }
       } catch (error) {
-        console.error("Failed to load or create conversation:", error);
+        console.error('Failed to load or create conversation:', error);
         // Fallback to initial state if service fails
         setMessages([initialAssistantMessage]);
-        setInterviewState({ stage: "greeting", completed: false });
+        setInterviewState({ stage: 'greeting', completed: false });
         setIsNewConversation(true);
       } finally {
         setIsLoadingPage(false);
@@ -141,7 +131,7 @@ export default function ChatPage() {
     if (conversationId) {
       loadOrCreateConversation();
     }
-  }, [conversationId, setMessages]); // Depend on conversationId and setMessages
+  }, [interviewState, conversationId, setMessages]); // Depend on conversationId and setMessages
 
   // Autoscroll: Scroll to bottom when messages change
   useEffect(() => {
@@ -150,7 +140,7 @@ export default function ChatPage() {
         if (viewportRef.current) {
           viewportRef.current.scrollTo({
             top: viewportRef.current.scrollHeight,
-            behavior: "smooth",
+            behavior: 'smooth',
           });
         }
       }, 100);
@@ -172,12 +162,12 @@ export default function ChatPage() {
         interviewStateRef.current, // Pass current state
         {
           id: createId(), // Generate unique ID for user message
-          role: "user",
+          role: 'user',
           content: input,
         },
       );
     } catch (error) {
-      console.error("Failed to save user message:", error);
+      console.error('Failed to save user message:', error);
     }
 
     // Continue with normal chat submission
@@ -186,16 +176,16 @@ export default function ChatPage() {
 
   const getStageDisplay = (stage: string) => {
     const stages = {
-      greeting: "Getting Started",
-      basic_info: "Basic Information",
-      salary_discussion: "Salary Discussion",
-      license_check: "License Verification",
-      license_details: "License Details",
-      license_timeline: "License Timeline",
-      experience: "Experience Review",
-      experience_details: "Experience Details",
-      alternative_experience: "Alternative Experience",
-      completed: "Interview Complete",
+      greeting: 'Getting Started',
+      basic_info: 'Basic Information',
+      salary_discussion: 'Salary Discussion',
+      license_check: 'License Verification',
+      license_details: 'License Details',
+      license_timeline: 'License Timeline',
+      experience: 'Experience Review',
+      experience_details: 'Experience Details',
+      alternative_experience: 'Alternative Experience',
+      completed: 'Interview Complete',
     };
     return stages[stage as keyof typeof stages] || stage;
   };
@@ -203,10 +193,7 @@ export default function ChatPage() {
   const getStatusBadge = () => {
     if (interviewState.completed) {
       return (
-        <Badge
-          variant="default"
-          className="text-xs bg-green-600 hover:bg-green-700"
-        >
+        <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
           <CheckCircle className="h-3 w-3 mr-1" />
           Done
         </Badge>
@@ -244,24 +231,17 @@ export default function ChatPage() {
       <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/")}
-              className="p-2"
-            >
+            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
               <h1 className="text-lg font-semibold text-gray-900">
-                {isNewConversation ? "New Interview" : "Interview Session"}
+                {isNewConversation ? 'New Interview' : 'Interview Session'}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 {getStatusBadge()}
                 {interviewState.candidateName && (
-                  <span className="text-sm text-gray-500">
-                    • {interviewState.candidateName}
-                  </span>
+                  <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
                 )}
               </div>
             </div>
@@ -270,17 +250,12 @@ export default function ChatPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/history")}
+              onClick={() => router.push('/history')}
               className="text-xs"
             >
               History
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/")}
-              className="text-xs"
-            >
+            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
               <Home className="h-4 w-4" />
             </Button>
           </div>
@@ -294,19 +269,19 @@ export default function ChatPage() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                  className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border-2 border-gray-200"
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border-2 border-gray-200'
                     }`}
                   >
-                    {message.role === "user" ? (
+                    {message.role === 'user' ? (
                       <User className="h-4 w-4" />
                     ) : (
                       <Bot className="h-4 w-4 text-gray-600" />
@@ -314,13 +289,13 @@ export default function ChatPage() {
                   </div>
                   <div
                     className={`rounded-2xl px-4 py-3 ${
-                      message.role === "user"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border border-gray-200 text-gray-900"
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border border-gray-200 text-gray-900'
                     }`}
                   >
                     <p className="text-sm leading-relaxed">
-                      {message.content.replace(/\[STATE:.*?\]/s, "").trim()}
+                      {message.content.replace(/\[STATE:.*?\]/s, '').trim()}
                     </p>
                   </div>
                 </div>
@@ -347,8 +322,8 @@ export default function ChatPage() {
               <div
                 className={`p-4 rounded-lg ${
                   interviewState.completed
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
+                    ? 'bg-green-50 border border-green-200'
+                    : 'bg-red-50 border border-red-200'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -358,32 +333,29 @@ export default function ChatPage() {
                     <XCircle className="h-5 w-5 text-red-600" />
                   )}
                   <p
-                    className={`font-medium ${interviewState.completed ? "text-green-800" : "text-red-800"}`}
+                    className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
                   >
                     {interviewState.completed
-                      ? "Interview Completed Successfully!"
-                      : "Interview Ended Early"}
+                      ? 'Interview Completed Successfully!'
+                      : 'Interview Ended Early'}
                   </p>
                 </div>
                 {interviewState.endReason && (
-                  <p className="text-sm text-gray-600 mb-3">
-                    {interviewState.endReason}
-                  </p>
+                  <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  This conversation is now marked as done. You can review it in
-                  your history.
+                  This conversation is now marked as done. You can review it in your history.
                 </p>
               </div>
               <div className="flex gap-2 mt-3">
                 <Button
-                  onClick={() => router.push("/history")}
+                  onClick={() => router.push('/history')}
                   variant="outline"
                   className="flex-1"
                 >
                   View History
                 </Button>
-                <Button onClick={() => router.push("/")} className="flex-1">
+                <Button onClick={() => router.push('/')} className="flex-1">
                   Back to Home
                 </Button>
               </div>
@@ -402,11 +374,7 @@ export default function ChatPage() {
                 disabled={isChatLoading || !input.trim() || isInterviewDone}
                 className="h-12 px-6 rounded-full"
               >
-                {isChatLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Send"
-                )}
+                {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
               </Button>
             </form>
           )}
