@@ -4,7 +4,7 @@ import { drizzleService } from '@/db/services/drizzle-service';
 // GET /api/conversations/[id]
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const conversation = await drizzleService.getConversation(id);
     if (!conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
@@ -21,14 +21,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   try {
     const { id } = await params;
     const { state, message } = await req.json();
-    // Try to get the conversation first
-    const existing = await drizzleService.getConversation(id);
-    let result;
-    if (existing) {
-      result = await drizzleService.updateConversation(id, state, message);
-    } else {
-      result = await drizzleService.createConversation(id, state, message);
-    }
+    // Atomically create or update the conversation to avoid race conditions
+    const result = await drizzleService.upsertConversation(id, state, message);
     return NextResponse.json(result);
   } catch (error) {
     // Enhanced error logging for debugging

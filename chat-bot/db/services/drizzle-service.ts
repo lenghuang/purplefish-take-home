@@ -45,6 +45,30 @@ function deserializeMessage(row: any): Message {
 }
 
 class DrizzleService {
+  /**
+   * Atomically creates or updates a conversation.
+   * If a race condition causes a unique constraint violation on create, falls back to update.
+   */
+  async upsertConversation(
+    id: string,
+    state: InterviewState,
+    message: Message,
+  ): Promise<Conversation | null> {
+    try {
+      // Try to create; if it fails due to unique constraint, update instead
+      return await this.createConversation(id, state, message);
+    } catch (error: any) {
+      if (
+        error &&
+        typeof error.message === 'string' &&
+        error.message.includes('UNIQUE constraint failed')
+      ) {
+        // Someone else created it at the same time; update instead
+        return await this.updateConversation(id, state, message);
+      }
+      throw error;
+    }
+  }
   // Create a new conversation with initial state and message
   async createConversation(
     id: string,
@@ -52,24 +76,26 @@ class DrizzleService {
     initialMessage: Message,
   ): Promise<Conversation> {
     const now = new Date();
-    // Sequential inserts (no transaction due to Drizzle/Better-SQLite3 limitation)
-    await db.insert(interviewStates).values(serializeInterviewState(initialState, id, id));
-    await db.insert(conversations).values({
-      id: id,
-      candidateName: initialState.candidateName ?? null,
-      createdAt: now,
-      updatedAt: now,
-      completed: !!initialState.completed,
-      endedEarly: !!initialState.endedEarly,
-      endReason: initialState.endReason ?? null,
-      lastMessage:
-        initialMessage.content
-          .replace(/\[STATE:[\s\S]*?\]/, '')
-          .trim()
-          .substring(0, 100) ?? null,
-      stateId: id,
-    } as typeof conversations.$inferInsert);
-    await db.insert(messages).values(serializeMessage(initialMessage, id));
+    // All inserts in a transaction for atomicity
+    await db.transaction(async (tx) => {
+      await tx.insert(interviewStates).values(serializeInterviewState(initialState, id, id));
+      await tx.insert(conversations).values({
+        id: id,
+        candidateName: initialState.candidateName ?? null,
+        createdAt: now,
+        updatedAt: now,
+        completed: !!initialState.completed,
+        endedEarly: !!initialState.endedEarly,
+        endReason: initialState.endReason ?? null,
+        lastMessage:
+          initialMessage.content
+            .replace(/\[STATE:[\s\S]*?\]/, '')
+            .trim()
+            .substring(0, 100) ?? null,
+        stateId: id,
+      } as typeof conversations.$inferInsert);
+      await tx.insert(messages).values(serializeMessage(initialMessage, id));
+    });
 
     // Return the full conversation object
     return this.getConversation(id) as Promise<Conversation>;
@@ -117,29 +143,31 @@ class DrizzleService {
       newMessage,
     );
     const now = new Date();
-    // Sequential updates/inserts (no transaction due to Drizzle/Better-SQLite3 limitation)
-    await db
-      .update(interviewStates)
-      .set({ ...newState })
-      .where(eq(interviewStates.id, id));
-    // Update conversation fields
-    const updateFields: any = {
-      updatedAt: now,
-      completed: newState.completed ? 1 : 0,
-      endedEarly: newState.endedEarly ? 1 : 0,
-      endReason: newState.endReason,
-    };
-    if (newMessage) {
-      updateFields.lastMessage = newMessage.content
-        .replace(/\[STATE:[\s\S]*?\]/, '')
-        .trim()
-        .substring(0, 100);
-    }
-    await db.update(conversations).set(updateFields).where(eq(conversations.id, id));
-    // Insert new message if provided
-    if (newMessage) {
-      await db.insert(messages).values(serializeMessage(newMessage, id));
-    }
+    // All updates/inserts in a transaction for atomicity
+    await db.transaction(async (tx) => {
+      await tx
+        .update(interviewStates)
+        .set({ ...newState })
+        .where(eq(interviewStates.id, id));
+      // Update conversation fields
+      const updateFields: any = {
+        updatedAt: now,
+        completed: newState.completed ? 1 : 0,
+        endedEarly: newState.endedEarly ? 1 : 0,
+        endReason: newState.endReason,
+      };
+      if (newMessage) {
+        updateFields.lastMessage = newMessage.content
+          .replace(/\[STATE:[\s\S]*?\]/, '')
+          .trim()
+          .substring(0, 100);
+      }
+      await tx.update(conversations).set(updateFields).where(eq(conversations.id, id));
+      // Insert new message if provided
+      if (newMessage) {
+        await tx.insert(messages).values(serializeMessage(newMessage, id));
+      }
+    });
 
     // Return the updated conversation
     return this.getConversation(id);

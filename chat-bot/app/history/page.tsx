@@ -49,7 +49,7 @@ export default function HistoryPage() {
         } else {
           alert('Failed to clear conversations. Please try again.');
         }
-      } catch (error) {
+      } catch {
         alert('Failed to clear conversations. Please try again.');
       }
     }

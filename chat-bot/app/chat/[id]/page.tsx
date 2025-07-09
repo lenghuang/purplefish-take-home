@@ -110,9 +110,14 @@ export default function ChatPage() {
     interviewStateRef.current = interviewState;
   }, [interviewState]);
 
-  // Load existing conversation or create new one
-  // Do NOT include interviewState in the dependency array.
-  // interviewState is set within this effect (via setInterviewState), so including it would cause this effect to re-run infinitely.
+  /**
+   * Load existing conversation or create new one.
+   *
+   * IMPORTANT: Do NOT include interviewState in the dependency array.
+   * interviewState is set within this effect (via setInterviewState), so including it would cause this effect to re-run infinitely.
+   * Only depend on conversationId (and setMessages if needed).
+   * If you need the latest interviewState inside this effect, use interviewStateRef.current.
+   */
   useEffect(() => {
     const loadOrCreateConversation = async () => {
       setIsLoadingPage(true);
@@ -154,8 +159,12 @@ export default function ChatPage() {
             loaded = true;
           }
         }
-      } catch (error: any) {
-        console.error('Failed to load or create conversation:', error);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('Failed to load or create conversation:', error.message, error.stack);
+        } else {
+          console.error('Failed to load or create conversation:', error);
+        }
         // Do not set error yet, try local storage fallback
       }
 
@@ -192,6 +201,9 @@ export default function ChatPage() {
     if (conversationId) {
       loadOrCreateConversation();
     }
+    // interviewState is intentionally omitted from dependencies to avoid infinite loop.
+    // The effect only needs to run when conversationId or setMessages changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, setMessages]);
 
   // Autoscroll: Scroll to bottom when messages change
