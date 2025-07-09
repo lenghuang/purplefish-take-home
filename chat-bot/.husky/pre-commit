@@ -1,5 +1,0 @@
-echo "Husky pre-commit hook running..."
-
-npm run lint
-npm run lint-staged
-git update-index --again
