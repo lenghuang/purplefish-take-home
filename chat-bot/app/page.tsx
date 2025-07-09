@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   MessageSquare,
   Clock,
@@ -14,11 +14,11 @@ import {
   Plus,
   History,
   Sparkles,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   localStorageService,
   type ConversationSummary,
-} from "@/lib/services/local-storage-service";
+} from '@/lib/services/local-storage-service';
 
 export default function HomePage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -55,7 +55,7 @@ export default function HomePage() {
 
   // Deduplicate conversations by id (keep first occurrence)
   const deduplicatedConversations = conversations.filter(
-    (conv, idx, arr) => arr.findIndex((c) => c.id === conv.id) === idx
+    (conv, idx, arr) => arr.findIndex((c) => c.id === conv.id) === idx,
   );
   const recentConversations = deduplicatedConversations.slice(0, 3);
 
@@ -64,14 +64,8 @@ export default function HomePage() {
       {/* Header */}
       <div className="bg-white border-b px-4 py-4">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">
-            Purplefish Interviews
-          </h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/history")}
-          >
+          <h1 className="text-xl font-bold text-gray-900">Purplefish Interviews</h1>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/history')}>
             <History className="h-4 w-4 mr-2" />
             History
           </Button>
@@ -86,22 +80,17 @@ export default function HomePage() {
             Streamline Your Nursing Interviews
           </h2>
           <p className="text-lg text-gray-600 leading-relaxed">
-            Our AI-powered platform automates the initial screening process for
-            ICU Registered Nurses, saving you time and ensuring consistent
-            candidate evaluation.
+            Our AI-powered platform automates the initial screening process for ICU Registered
+            Nurses, saving you time and ensuring consistent candidate evaluation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              onClick={startNewInterview}
-              size="lg"
-              className="px-8 py-3 text-base"
-            >
+            <Button onClick={startNewInterview} size="lg" className="px-8 py-3 text-base">
               <Plus className="h-5 w-5 mr-2" />
               Start New Interview
             </Button>
             {conversations.length > 0 && (
               <Button
-                onClick={() => router.push("/history")}
+                onClick={() => router.push('/history')}
                 variant="outline"
                 size="lg"
                 className="px-8 py-3 text-base"
@@ -124,11 +113,7 @@ export default function HomePage() {
                   <MessageSquare className="h-5 w-5" />
                   Recent Interviews
                 </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push("/history")}
-                >
+                <Button variant="ghost" size="sm" onClick={() => router.push('/history')}>
                   View All
                 </Button>
               </div>
@@ -144,39 +129,29 @@ export default function HomePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-gray-900 truncate">
-                        {conv.candidateName || "Anonymous Candidate"}
+                        {conv.candidateName || 'Anonymous Candidate'}
                       </h4>
                       <Badge
                         variant={
-                          conv.completed
-                            ? "default"
-                            : conv.endedEarly
-                            ? "destructive"
-                            : "secondary"
+                          conv.completed ? 'default' : conv.endedEarly ? 'destructive' : 'secondary'
                         }
                         className="text-xs"
                       >
-                        {conv.completed
-                          ? "Done"
-                          : conv.endedEarly
-                          ? "Ended Early"
-                          : "In Progress"}
+                        {conv.completed ? 'Done' : conv.endedEarly ? 'Ended Early' : 'In Progress'}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <Clock className="h-3 w-3 text-gray-400" />
                       <span className="text-xs text-gray-500">
-                        {new Date(conv.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
+                        {new Date(conv.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 truncate mt-1">
-                      {conv.lastMessage}
-                    </p>
+                    <p className="text-sm text-gray-600 truncate mt-1">{conv.lastMessage}</p>
                   </div>
                 </div>
               ))}
@@ -194,39 +169,31 @@ export default function HomePage() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <h4 className="font-medium text-gray-900 mb-1">
-                  Automated Screening
-                </h4>
+                <h4 className="font-medium text-gray-900 mb-1">Automated Screening</h4>
                 <p className="text-gray-600">
-                  Our AI conducts initial interviews, asking structured
-                  questions about experience, salary, and licensing.
+                  Our AI conducts initial interviews, asking structured questions about experience,
+                  salary, and licensing.
                 </p>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 mb-1">
-                  Intelligent Evaluation
-                </h4>
+                <h4 className="font-medium text-gray-900 mb-1">Intelligent Evaluation</h4>
                 <p className="text-gray-600">
-                  The system identifies key information and flags candidates
-                  based on predefined criteria.
+                  The system identifies key information and flags candidates based on predefined
+                  criteria.
                 </p>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 mb-1">
-                  Seamless History
-                </h4>
+                <h4 className="font-medium text-gray-900 mb-1">Seamless History</h4>
                 <p className="text-gray-600">
-                  All conversations are saved, allowing you to review past
-                  interviews and candidate responses anytime.
+                  All conversations are saved, allowing you to review past interviews and candidate
+                  responses anytime.
                 </p>
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 mb-1">
-                  Focus on Top Talent
-                </h4>
+                <h4 className="font-medium text-gray-900 mb-1">Focus on Top Talent</h4>
                 <p className="text-gray-600">
-                  Spend less time on initial screenings and more time engaging
-                  with qualified candidates.
+                  Spend less time on initial screenings and more time engaging with qualified
+                  candidates.
                 </p>
               </div>
             </div>
