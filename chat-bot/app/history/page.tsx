@@ -41,10 +41,17 @@ export default function HistoryPage() {
 
   const clearHistory = async () => {
     if (confirm('Are you sure you want to clear all interview history?')) {
-      await clientStorageService.clearAllLocal();
-      setConversations([]);
-      // Optionally, you could also call a server endpoint to clear all server-side conversations if needed
-      // await fetch('/api/conversations', { method: 'DELETE' });
+      try {
+        const res = await fetch('/api/conversations', { method: 'DELETE' });
+        if (res.ok) {
+          await clientStorageService.clearAllLocal();
+          setConversations([]);
+        } else {
+          alert('Failed to clear conversations. Please try again.');
+        }
+      } catch (error) {
+        alert('Failed to clear conversations. Please try again.');
+      }
     }
   };
 
