@@ -292,7 +292,7 @@ export async function POST(req: NextRequest) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         messages: messages.map((msg: any) => ({
           role: msg.role,
-          content: msg.content.replace(/\[STATE:.*?\]/s, '').trim(),
+          content: msg.content.replace(/\[STATE:[\s\S]*?\]/, '').trim(),
         })),
         onError: (error) => {
           console.error('StreamText internal error:', error);

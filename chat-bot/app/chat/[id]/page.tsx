@@ -111,10 +111,13 @@ export default function ChatPage() {
   }, [interviewState]);
 
   // Load existing conversation or create new one
+  // Do NOT include interviewState in the dependency array.
+  // interviewState is set within this effect (via setInterviewState), so including it would cause this effect to re-run infinitely.
   useEffect(() => {
     const loadOrCreateConversation = async () => {
       setIsLoadingPage(true);
       setError(null);
+      let loaded = false;
       try {
         // Try to get from server first
         const res = await fetch(`/api/conversations/${conversationId}`);
@@ -129,6 +132,7 @@ export default function ChatPage() {
             conversation.state,
             conversation.messages?.[conversation.messages.length - 1],
           );
+          loaded = true;
         } else {
           // If not found, create new on server
           const createRes = await fetch(`/api/conversations/${conversationId}`, {
@@ -147,35 +151,48 @@ export default function ChatPage() {
               interviewState,
               initialAssistantMessage,
             );
-          } else {
-            setError('Failed to create conversation');
-            return;
+            loaded = true;
           }
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error('Failed to load or create conversation:', error);
-        setError('Failed to load or create conversation');
-        // Fallback to local storage
-        const localConv = await clientStorageService.getLocal(conversationId);
-        if (localConv) {
-          setMessages(localConv.messages);
-          setInterviewState(localConv.state);
-          setIsNewConversation(false);
-        } else {
-          setMessages([initialAssistantMessage]);
-          setInterviewState({ stage: 'greeting', completed: false });
-          setIsNewConversation(true);
-        }
-      } finally {
-        setIsLoadingPage(false);
+        // Do not set error yet, try local storage fallback
       }
+
+      if (!loaded) {
+        // Fallback to local storage
+        try {
+          const localConv = await clientStorageService.getLocal(conversationId);
+          if (localConv) {
+            setMessages(localConv.messages);
+            setInterviewState(localConv.state);
+            setIsNewConversation(false);
+            loaded = true;
+          } else {
+            setMessages([initialAssistantMessage]);
+            setInterviewState({ stage: 'greeting', completed: false });
+            setIsNewConversation(true);
+            // This is a new conversation, not an error
+            loaded = true;
+          }
+        } catch (localError) {
+          console.error('Failed to load from local storage:', localError);
+        }
+      }
+
+      if (!loaded) {
+        setError(
+          'Failed to load or create conversation. Please check your connection or try again.',
+        );
+      }
+
+      setIsLoadingPage(false);
     };
 
     if (conversationId) {
       loadOrCreateConversation();
     }
-  }, [conversationId, interviewState, setMessages]);
+  }, [conversationId, setMessages]);
 
   // Autoscroll: Scroll to bottom when messages change
   useEffect(() => {
@@ -267,16 +284,7 @@ export default function ChatPage() {
     );
   };
 
-  if (isLoadingPage) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading conversation...</p>
-        </div>
-      </div>
-    );
-  }
+  // Removed full-page loading spinner. Loading state is now handled in the chat area.
 
   if (error) {
     return (
@@ -333,51 +341,63 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col">
         <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
           <div className="space-y-4 py-4 pb-20">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                >
+            {isLoadingPage ? (
+              // Skeleton loading state for chat area
+              <>
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
+                  <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
+                </div>
+              </>
+            ) : (
+              <>
+                {messages.map((message) => (
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200'
-                    }`}
+                    key={message.id}
+                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    {message.role === 'user' ? (
-                      <User className="h-4 w-4" />
-                    ) : (
+                    <div
+                      className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          message.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white border-2 border-gray-200'
+                        }`}
+                      >
+                        {message.role === 'user' ? (
+                          <User className="h-4 w-4" />
+                        ) : (
+                          <Bot className="h-4 w-4 text-gray-600" />
+                        )}
+                      </div>
+                      <div
+                        className={`rounded-2xl px-4 py-3 ${
+                          message.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white border border-gray-200 text-gray-900'
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">
+                          {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {isChatLoading && (
+                  <div className="flex gap-3 justify-start">
+                    <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-gray-600" />
-                    )}
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      <span className="text-sm text-gray-500">Typing...</span>
+                    </div>
                   </div>
-                  <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-900'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">
-                      {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isChatLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-500">Typing...</span>
-                </div>
-              </div>
+                )}
+              </>
             )}
           </div>
         </ScrollArea>
