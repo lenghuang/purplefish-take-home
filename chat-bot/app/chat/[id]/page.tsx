@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
-import { clientStorageService } from '@/lib/services/client-storage-service';
 import type { InterviewState, Message } from '@/lib/services/local-storage-service';
 
 const initialAssistantMessage: Message = {
@@ -71,13 +70,6 @@ export default function ChatPage() {
           console.log('UI interviewState after setInterviewState:', newState);
         }
 
-        // Optimistically update local storage
-        await clientStorageService.saveLocally(conversationId, newState, {
-          id: message.id,
-          role: message.role as 'assistant',
-          content: message.content,
-        });
-
         // Persist to server
         const apiRes = await fetch(`/api/conversations/${conversationId}`, {
           method: 'POST',
@@ -131,12 +123,6 @@ export default function ChatPage() {
           setMessages(conversation.messages);
           setInterviewState(conversation.state);
           setIsNewConversation(false);
-          // Sync to local storage
-          await clientStorageService.saveLocally(
-            conversationId,
-            conversation.state,
-            conversation.messages?.[conversation.messages.length - 1],
-          );
           loaded = true;
         } else {
           // If not found, create new on server
@@ -151,11 +137,6 @@ export default function ChatPage() {
           if (createRes.ok) {
             setMessages([initialAssistantMessage]);
             setIsNewConversation(true);
-            await clientStorageService.saveLocally(
-              conversationId,
-              interviewState,
-              initialAssistantMessage,
-            );
             loaded = true;
           }
         }
@@ -169,24 +150,6 @@ export default function ChatPage() {
       }
 
       if (!loaded) {
-        // Fallback to local storage
-        try {
-          const localConv = await clientStorageService.getLocal(conversationId);
-          if (localConv) {
-            setMessages(localConv.messages);
-            setInterviewState(localConv.state);
-            setIsNewConversation(false);
-            loaded = true;
-          } else {
-            setMessages([initialAssistantMessage]);
-            setInterviewState({ stage: 'greeting', completed: false });
-            setIsNewConversation(true);
-            // This is a new conversation, not an error
-            loaded = true;
-          }
-        } catch (localError) {
-          console.error('Failed to load from local storage:', localError);
-        }
       }
 
       if (!loaded) {
@@ -229,12 +192,6 @@ export default function ChatPage() {
     if (!input.trim() || isChatLoading || isInterviewDone) return;
 
     try {
-      // Optimistically update local storage
-      await clientStorageService.saveLocally(conversationId, interviewStateRef.current, {
-        id: createId(),
-        role: 'user',
-        content: input,
-      });
       // Persist to server
       await fetch(`/api/conversations/${conversationId}`, {
         method: 'POST',

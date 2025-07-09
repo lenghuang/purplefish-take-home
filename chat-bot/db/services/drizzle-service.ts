@@ -69,6 +69,9 @@ class DrizzleService {
       if (existing) {
         // Update existing conversation
         return await this.updateConversation(id, state, message);
+      } else {
+        // Create new conversation with the provided id
+        return await this.createConversation(state, message, id);
       }
     }
     // Create new conversation with a generated id
@@ -81,14 +84,17 @@ class DrizzleService {
   async createConversation(
     initialState: InterviewState,
     initialMessage: Message,
+    id?: string,
   ): Promise<Conversation> {
-    const id = generateInterviewStateId();
+    const conversationId = id ?? generateInterviewStateId();
     const now = new Date();
     // All inserts in a transaction for atomicity
     await db.transaction((tx) => {
-      tx.insert(interviewStates).values(serializeInterviewState(initialState, id, id));
+      tx.insert(interviewStates).values(
+        serializeInterviewState(initialState, conversationId, conversationId),
+      );
       tx.insert(conversations).values({
-        id: id,
+        id: conversationId,
         candidateName: initialState.candidateName ?? null,
         createdAt: now,
         updatedAt: now,
@@ -100,13 +106,13 @@ class DrizzleService {
             .replace(/\[STATE:[\s\S]*?\]/, '')
             .trim()
             .substring(0, 100) ?? null,
-        stateId: id,
+        stateId: conversationId,
       } as typeof conversations.$inferInsert);
-      tx.insert(messages).values(serializeMessage(initialMessage, id));
+      tx.insert(messages).values(serializeMessage(initialMessage, conversationId));
     });
 
     // Return the full conversation object
-    return this.getConversation(id) as Promise<Conversation>;
+    return this.getConversation(conversationId) as Promise<Conversation>;
   }
 
   // Get a conversation by id
