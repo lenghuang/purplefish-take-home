@@ -193,10 +193,9 @@ function extractStructuredData(
       break;
 
     case 'experience_details':
-      if (text.length > 30) {
-        updates.stage = 'completed';
-        updates.completed = true;
-      }
+      // Mark as completed upon any answer in experience_details stage
+      updates.stage = 'completed';
+      updates.completed = true;
       break;
 
     case 'alternative_experience':
@@ -213,6 +212,14 @@ function extractStructuredData(
       break;
   }
 
+  console.log(
+    '[extractStructuredData] stage:',
+    currentState.stage,
+    'text:',
+    text,
+    'updates:',
+    updates,
+  );
   return updates;
 }
 

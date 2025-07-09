@@ -15,10 +15,8 @@ import {
   History,
   Sparkles,
 } from 'lucide-react';
-import {
-  localStorageService,
-  type ConversationSummary,
-} from '@/lib/services/local-storage-service';
+import { clientStorageService } from '@/lib/services/client-storage-service';
+import type { ConversationSummary } from '@/lib/services/local-storage-service';
 
 export default function HomePage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -27,8 +25,20 @@ export default function HomePage() {
   // Load conversations from localStorageService on mount
   useEffect(() => {
     const loadConversations = async () => {
-      const saved = await localStorageService.getAllConversations();
-      setConversations(saved);
+      // Try to get from server first, fallback to local
+      try {
+        const res = await fetch('/api/conversations');
+        if (res.ok) {
+          const serverConvs: ConversationSummary[] = await res.json();
+          setConversations(serverConvs);
+        } else {
+          throw new Error('Server fetch failed');
+        }
+      } catch {
+        // Fallback to local storage
+        const localConvs = await clientStorageService.getAllLocal();
+        setConversations(localConvs);
+      }
     };
     loadConversations();
   }, []);

@@ -11,11 +11,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
-import {
-  localStorageService,
-  type InterviewState,
-  type Message,
-} from '@/lib/services/local-storage-service';
+import { clientStorageService } from '@/lib/services/client-storage-service';
+import type { InterviewState, Message } from '@/lib/services/local-storage-service';
 
 const initialAssistantMessage: Message = {
   id: 'initial-assistant-message', // Unique ID for the initial message
@@ -34,6 +31,7 @@ export default function ChatPage() {
   });
   const [isNewConversation, setIsNewConversation] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(true); // New loading state for page data
+  const [error, setError] = useState<string | null>(null); // Error state
 
   const interviewStateRef = useRef<InterviewState>(interviewState);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -64,20 +62,37 @@ export default function ChatPage() {
       console.log('Message finished:', message.content);
 
       try {
-        const stateMatch = message.content.match(/\[STATE:(.*?)\]/s);
-        let newState = interviewStateRef.current; // Default to current state if no state in message
+        const stateMatch = message.content.match(/\[STATE:([\s\S]*?)\]/);
+        let newState = interviewStateRef.current;
         if (stateMatch) {
           newState = JSON.parse(stateMatch[1]);
           console.log('Parsed state from message:', newState);
           setInterviewState(newState);
+          console.log('UI interviewState after setInterviewState:', newState);
         }
 
-        // Save the assistant message and updated state to service
-        await localStorageService.updateConversation(conversationId, newState, {
+        // Optimistically update local storage
+        await clientStorageService.saveLocally(conversationId, newState, {
           id: message.id,
           role: message.role as 'assistant',
           content: message.content,
         });
+
+        // Persist to server
+        const apiRes = await fetch(`/api/conversations/${conversationId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            state: newState,
+            message: {
+              id: message.id,
+              role: message.role,
+              content: message.content,
+            },
+          }),
+        });
+        const apiJson = await apiRes.json().catch(() => ({}));
+        console.log('API response after saving state:', apiJson);
       } catch (error) {
         console.error('Failed to save message or update state:', error);
       }
@@ -99,30 +114,59 @@ export default function ChatPage() {
   useEffect(() => {
     const loadOrCreateConversation = async () => {
       setIsLoadingPage(true);
+      setError(null);
       try {
-        const conversation = await localStorageService.getConversation(conversationId);
-
-        if (conversation) {
-          // Existing conversation
+        // Try to get from server first
+        const res = await fetch(`/api/conversations/${conversationId}`);
+        if (res.ok) {
+          const conversation = await res.json();
           setMessages(conversation.messages);
           setInterviewState(conversation.state);
           setIsNewConversation(false);
-        } else {
-          // New conversation - create it in service with initial message
-          await localStorageService.createConversation(
+          // Sync to local storage
+          await clientStorageService.saveLocally(
             conversationId,
-            interviewState,
-            initialAssistantMessage,
+            conversation.state,
+            conversation.messages?.[conversation.messages.length - 1],
           );
-          setMessages([initialAssistantMessage]); // Set initial message for new chat
+        } else {
+          // If not found, create new on server
+          const createRes = await fetch(`/api/conversations/${conversationId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              state: interviewState,
+              message: initialAssistantMessage,
+            }),
+          });
+          if (createRes.ok) {
+            setMessages([initialAssistantMessage]);
+            setIsNewConversation(true);
+            await clientStorageService.saveLocally(
+              conversationId,
+              interviewState,
+              initialAssistantMessage,
+            );
+          } else {
+            setError('Failed to create conversation');
+            return;
+          }
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        console.error('Failed to load or create conversation:', error);
+        setError('Failed to load or create conversation');
+        // Fallback to local storage
+        const localConv = await clientStorageService.getLocal(conversationId);
+        if (localConv) {
+          setMessages(localConv.messages);
+          setInterviewState(localConv.state);
+          setIsNewConversation(false);
+        } else {
+          setMessages([initialAssistantMessage]);
+          setInterviewState({ stage: 'greeting', completed: false });
           setIsNewConversation(true);
         }
-      } catch (error) {
-        console.error('Failed to load or create conversation:', error);
-        // Fallback to initial state if service fails
-        setMessages([initialAssistantMessage]);
-        setInterviewState({ stage: 'greeting', completed: false });
-        setIsNewConversation(true);
       } finally {
         setIsLoadingPage(false);
       }
@@ -131,7 +175,7 @@ export default function ChatPage() {
     if (conversationId) {
       loadOrCreateConversation();
     }
-  }, [interviewState, conversationId, setMessages]); // Depend on conversationId and setMessages
+  }, [conversationId, interviewState, setMessages]);
 
   // Autoscroll: Scroll to bottom when messages change
   useEffect(() => {
@@ -156,16 +200,25 @@ export default function ChatPage() {
     if (!input.trim() || isChatLoading || isInterviewDone) return;
 
     try {
-      // Save user message to service
-      await localStorageService.updateConversation(
-        conversationId,
-        interviewStateRef.current, // Pass current state
-        {
-          id: createId(), // Generate unique ID for user message
-          role: 'user',
-          content: input,
-        },
-      );
+      // Optimistically update local storage
+      await clientStorageService.saveLocally(conversationId, interviewStateRef.current, {
+        id: createId(),
+        role: 'user',
+        content: input,
+      });
+      // Persist to server
+      await fetch(`/api/conversations/${conversationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: interviewStateRef.current,
+          message: {
+            id: createId(),
+            role: 'user',
+            content: input,
+          },
+        }),
+      });
     } catch (error) {
       console.error('Failed to save user message:', error);
     }
@@ -220,6 +273,20 @@ export default function ChatPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-500">Loading conversation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-lg font-semibold mb-2">Error</div>
+          <div className="text-gray-700 mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -295,7 +362,7 @@ export default function ChatPage() {
                     }`}
                   >
                     <p className="text-sm leading-relaxed">
-                      {message.content.replace(/\[STATE:.*?\]/s, '').trim()}
+                      {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
                     </p>
                   </div>
                 </div>

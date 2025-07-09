@@ -5,10 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageSquare, Clock, ArrowLeft, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import {
-  localStorageService,
-  type ConversationSummary,
-} from '@/lib/services/local-storage-service';
+import { clientStorageService } from '@/lib/services/client-storage-service';
+import type { ConversationSummary } from '@/lib/services/local-storage-service';
 
 export default function HistoryPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -17,8 +15,22 @@ export default function HistoryPage() {
   // Load conversations from localStorageService on mount
   useEffect(() => {
     const loadConversations = async () => {
-      const saved = await localStorageService.getAllConversations();
-      setConversations(saved);
+      // Try to get from server first, fallback to local
+      try {
+        const res = await fetch('/api/conversations');
+        if (res.ok) {
+          const serverConvs: ConversationSummary[] = await res.json();
+          setConversations(serverConvs);
+          // Optionally sync to local
+          // (could iterate and save to local if desired)
+        } else {
+          throw new Error('Server fetch failed');
+        }
+      } catch {
+        // Fallback to local storage
+        const localConvs = await clientStorageService.getAllLocal();
+        setConversations(localConvs);
+      }
     };
     loadConversations();
   }, []);
@@ -29,8 +41,10 @@ export default function HistoryPage() {
 
   const clearHistory = async () => {
     if (confirm('Are you sure you want to clear all interview history?')) {
-      await localStorageService.clearAllConversations();
+      await clientStorageService.clearAllLocal();
       setConversations([]);
+      // Optionally, you could also call a server endpoint to clear all server-side conversations if needed
+      // await fetch('/api/conversations', { method: 'DELETE' });
     }
   };
 
