@@ -21,3 +21,51 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Failed to delete conversations' }, { status: 500 });
   }
 }
+
+// POST /api/conversations
+import { nanoid } from 'nanoid';
+import type { InterviewState, Message } from '@/lib/services/local-storage-service';
+
+export async function POST() {
+  try {
+    // Default initial interview state
+    const initialState: InterviewState = {
+      stage: 'intro',
+      completed: false,
+    };
+
+    // Default initial message from assistant
+    const initialMessage: Message = {
+      id: nanoid(),
+      role: 'assistant',
+      content:
+        "Welcome! Let's start your interview. Please introduce yourself or ask your first question.",
+    };
+
+    const conversation = await drizzleService.createConversation(initialState, initialMessage);
+
+    if (!conversation || !conversation.id) {
+      console.error(
+        '[POST /api/conversations] Conversation creation returned null/undefined or missing id.',
+        { conversation },
+      );
+      return NextResponse.json(
+        { error: 'Failed to create conversation: conversation is null or missing id.' },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ id: conversation.id });
+  } catch (error: any) {
+    console.error(
+      '[POST /api/conversations] Failed to create conversation:',
+      error && error.stack ? error.stack : error,
+    );
+    return NextResponse.json(
+      {
+        error: `Failed to create conversation: ${error && error.message ? error.message : String(error)}`,
+      },
+      { status: 500 },
+    );
+  }
+}

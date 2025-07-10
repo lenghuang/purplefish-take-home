@@ -120,6 +120,18 @@ export default function ChatPage() {
         const res = await fetch(`/api/conversations/${conversationId}`);
         if (res.ok) {
           const conversation = await res.json();
+          if (
+            !conversation ||
+            typeof conversation !== 'object' ||
+            !conversation.messages ||
+            !conversation.state
+          ) {
+            setError(
+              'Failed to load conversation data. Please try again or start a new conversation.',
+            );
+            setIsLoadingPage(false);
+            return;
+          }
           setMessages(conversation.messages);
           setInterviewState(conversation.state);
           setIsNewConversation(false);
@@ -130,7 +142,7 @@ export default function ChatPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              state: interviewState,
+              state: interviewStateRef.current,
               message: initialAssistantMessage,
             }),
           });
@@ -264,6 +276,18 @@ export default function ChatPage() {
           <Button onClick={() => window.location.reload()} variant="outline">
             Retry
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guard: If interviewState is null/undefined, show loading or fallback UI
+  if (!interviewState) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+          <div className="text-gray-700 mb-4">Loading conversation...</div>
         </div>
       </div>
     );

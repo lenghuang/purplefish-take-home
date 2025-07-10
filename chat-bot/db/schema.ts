@@ -20,6 +20,7 @@ export const messages = sqliteTable('messages', {
   conversationId: text('conversation_id').notNull(),
   role: text('role'),
   content: text('content'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 // InterviewState Table

@@ -45,11 +45,7 @@ export default function HomePage() {
     loadConversations();
   }, []);
 
-  const startNewInterview = () => {
-    // Generate a new conversation ID and navigate to chat
-    const newId = nanoid();
-    router.push(`/chat/${newId}`);
-  };
+  // Start New Interview now navigates to /chat/new; client-side ID generation removed.
 
   const loadConversation = (conversationId: string) => {
     router.push(`/chat/${conversationId}`);
@@ -96,7 +92,11 @@ export default function HomePage() {
             Nurses, saving you time and ensuring consistent candidate evaluation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={startNewInterview} size="lg" className="px-8 py-3 text-base">
+            <Button
+              onClick={() => router.push('/chat/new')}
+              size="lg"
+              className="px-8 py-3 text-base"
+            >
               <Plus className="h-5 w-5 mr-2" />
               Start New Interview
             </Button>

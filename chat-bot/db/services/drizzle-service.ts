@@ -38,6 +38,7 @@ function serializeMessage(msg: Message, conversationId: string) {
     conversationId,
     role: msg.role,
     content: msg.content,
+    createdAt: msg.created_at ? new Date(msg.created_at) : new Date(),
   };
 }
 
@@ -47,6 +48,11 @@ function deserializeMessage(row: any): Message {
     id: row.id,
     role: row.role as 'user' | 'assistant',
     content: row.content,
+    created_at: row.createdAt
+      ? typeof row.createdAt === 'number'
+        ? new Date(row.createdAt * 1000).toISOString()
+        : new Date(row.createdAt).toISOString()
+      : undefined,
   };
 }
 
@@ -70,8 +76,8 @@ class DrizzleService {
         // Update existing conversation
         return await this.updateConversation(id, state, message);
       } else {
-        // Create new conversation with the provided id
-        return await this.createConversation(state, message, id);
+        // Do not create a new conversation if the provided id does not exist
+        return null;
       }
     }
     // Create new conversation with a generated id
@@ -88,31 +94,132 @@ class DrizzleService {
   ): Promise<Conversation> {
     const conversationId = id ?? generateInterviewStateId();
     const now = new Date();
-    // All inserts in a transaction for atomicity
-    await db.transaction((tx) => {
-      tx.insert(interviewStates).values(
-        serializeInterviewState(initialState, conversationId, conversationId),
-      );
-      tx.insert(conversations).values({
+    let transactionError: unknown = null;
+    let insertValues: any = null;
+    try {
+      // Prepare values for insert, only including schema-compliant fields
+      insertValues = {
         id: conversationId,
         candidateName: initialState.candidateName ?? null,
         createdAt: now,
         updatedAt: now,
         completed: !!initialState.completed,
-        endedEarly: !!initialState.endedEarly,
-        endReason: initialState.endReason ?? null,
         lastMessage:
           initialMessage.content
             .replace(/\[STATE:[\s\S]*?\]/, '')
             .trim()
             .substring(0, 100) ?? null,
         stateId: conversationId,
-      } as typeof conversations.$inferInsert);
-      tx.insert(messages).values(serializeMessage(initialMessage, conversationId));
-    });
+      } as typeof conversations.$inferInsert;
 
-    // Return the full conversation object
-    return this.getConversation(conversationId) as Promise<Conversation>;
+      // All inserts in a transaction for atomicity
+      await db.transaction((tx) => {
+        tx.insert(interviewStates).values(
+          serializeInterviewState(initialState, conversationId, conversationId),
+        );
+        const conversationInsertResult = tx.insert(conversations).values(insertValues);
+
+        // Logging before message insert
+        console.info('[drizzleService.createConversation] About to insert initial message', {
+          conversationId,
+          message: initialMessage,
+        });
+
+        const messageInsertResult = tx
+          .insert(messages)
+          .values(serializeMessage(initialMessage, conversationId));
+
+        // Logging after message insert
+        Promise.resolve(messageInsertResult)
+          .then((result) => {
+            if (!result || (Array.isArray(result) && result.length === 0)) {
+              console.error('[drizzleService.createConversation] No message row inserted', {
+                conversationId,
+                message: initialMessage,
+                insertResult: result,
+              });
+            } else {
+              console.info('[drizzleService.createConversation] Message insert result', {
+                conversationId,
+                message: initialMessage,
+                insertResult: result,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('[drizzleService.createConversation] Error during message insert', {
+              conversationId,
+              message: initialMessage,
+              error: err instanceof Error ? err.message : err,
+            });
+          });
+
+        // Log the result of the conversations insert
+        Promise.resolve(conversationInsertResult)
+          .then((result) => {
+            // Drizzle returns an array of inserted rows for SQLite
+            if (!result || (Array.isArray(result) && result.length === 0)) {
+              console.error('[drizzleService.createConversation] No conversation row inserted', {
+                conversationId,
+                insertValues,
+                insertResult: result,
+              });
+            } else {
+              console.info('[drizzleService.createConversation] Conversation insert result', {
+                conversationId,
+                insertValues,
+                insertResult: result,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error('[drizzleService.createConversation] Error during conversation insert', {
+              conversationId,
+              insertValues,
+              error: err instanceof Error ? err.message : err,
+            });
+          });
+      });
+    } catch (err) {
+      transactionError = err;
+      console.error('[drizzleService.createConversation] Transaction failed', {
+        conversationId,
+        insertValues,
+        initialState,
+        initialMessage,
+        error: err instanceof Error ? err.message : err,
+      });
+      throw new Error(
+        `[drizzleService.createConversation] Transaction failed for conversationId: ${conversationId} - ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
+    // Return the full conversation object, or throw if not found
+    let conversation: Conversation | null = null;
+    try {
+      conversation = await this.getConversation(conversationId);
+    } catch (err) {
+      console.error('[drizzleService.createConversation] Retrieval failed after insert', {
+        conversationId,
+        error: err instanceof Error ? err.message : err,
+      });
+      throw new Error(
+        `[drizzleService.createConversation] Retrieval failed for conversationId: ${conversationId} - ${err instanceof Error ? err.message : err}`,
+      );
+    }
+    if (!conversation) {
+      console.error('[drizzleService.createConversation] Conversation not found after insert', {
+        conversationId,
+        insertValues,
+        initialState,
+        initialMessage,
+        transactionError,
+      });
+      throw new Error(
+        `[drizzleService.createConversation] Failed to create or retrieve conversation with id: ${conversationId}`,
+      );
+    }
+    return conversation;
   }
 
   // Get a conversation by id
@@ -121,7 +228,9 @@ class DrizzleService {
     const conv = await db.query.conversations.findFirst({
       where: eq(conversations.id, id),
       with: {
-        messages: true,
+        messages: {
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        },
         state: true,
       },
     });
