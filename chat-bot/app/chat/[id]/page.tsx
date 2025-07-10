@@ -11,11 +11,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
-import {
-  localStorageService,
-  type InterviewState,
-  type Message,
-} from '@/lib/services/local-storage-service';
+import type { InterviewState, Message } from '@/lib/services/local-storage-service';
 
 const initialAssistantMessage: Message = {
   id: 'initial-assistant-message', // Unique ID for the initial message
@@ -34,6 +30,7 @@ export default function ChatPage() {
   });
   const [isNewConversation, setIsNewConversation] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(true); // New loading state for page data
+  const [error, setError] = useState<string | null>(null); // Error state
 
   const interviewStateRef = useRef<InterviewState>(interviewState);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -64,20 +61,30 @@ export default function ChatPage() {
       console.log('Message finished:', message.content);
 
       try {
-        const stateMatch = message.content.match(/\[STATE:(.*?)\]/s);
-        let newState = interviewStateRef.current; // Default to current state if no state in message
+        const stateMatch = message.content.match(/\[STATE:([\s\S]*?)\]/);
+        let newState = interviewStateRef.current;
         if (stateMatch) {
           newState = JSON.parse(stateMatch[1]);
           console.log('Parsed state from message:', newState);
           setInterviewState(newState);
+          console.log('UI interviewState after setInterviewState:', newState);
         }
 
-        // Save the assistant message and updated state to service
-        await localStorageService.updateConversation(conversationId, newState, {
-          id: message.id,
-          role: message.role as 'assistant',
-          content: message.content,
+        // Persist to server
+        const apiRes = await fetch(`/api/conversations/${conversationId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            state: newState,
+            message: {
+              id: message.id,
+              role: message.role,
+              content: message.content,
+            },
+          }),
         });
+        const apiJson = await apiRes.json().catch(() => ({}));
+        console.log('API response after saving state:', apiJson);
       } catch (error) {
         console.error('Failed to save message or update state:', error);
       }
@@ -95,43 +102,84 @@ export default function ChatPage() {
     interviewStateRef.current = interviewState;
   }, [interviewState]);
 
-  // Load existing conversation or create new one
+  /**
+   * Load existing conversation or create new one.
+   *
+   * IMPORTANT: Do NOT include interviewState in the dependency array.
+   * interviewState is set within this effect (via setInterviewState), so including it would cause this effect to re-run infinitely.
+   * Only depend on conversationId (and setMessages if needed).
+   * If you need the latest interviewState inside this effect, use interviewStateRef.current.
+   */
   useEffect(() => {
     const loadOrCreateConversation = async () => {
       setIsLoadingPage(true);
+      setError(null);
+      let loaded = false;
       try {
-        const conversation = await localStorageService.getConversation(conversationId);
-
-        if (conversation) {
-          // Existing conversation
+        // Try to get from server first
+        const res = await fetch(`/api/conversations/${conversationId}`);
+        if (res.ok) {
+          const conversation = await res.json();
+          if (
+            !conversation ||
+            typeof conversation !== 'object' ||
+            !conversation.messages ||
+            !conversation.state
+          ) {
+            setError(
+              'Failed to load conversation data. Please try again or start a new conversation.',
+            );
+            setIsLoadingPage(false);
+            return;
+          }
           setMessages(conversation.messages);
           setInterviewState(conversation.state);
           setIsNewConversation(false);
+          loaded = true;
         } else {
-          // New conversation - create it in service with initial message
-          await localStorageService.createConversation(
-            conversationId,
-            interviewState,
-            initialAssistantMessage,
-          );
-          setMessages([initialAssistantMessage]); // Set initial message for new chat
-          setIsNewConversation(true);
+          // If not found, create new on server
+          const createRes = await fetch(`/api/conversations/${conversationId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              state: interviewStateRef.current,
+              message: initialAssistantMessage,
+            }),
+          });
+          if (createRes.ok) {
+            setMessages([initialAssistantMessage]);
+            setIsNewConversation(true);
+            loaded = true;
+          }
         }
-      } catch (error) {
-        console.error('Failed to load or create conversation:', error);
-        // Fallback to initial state if service fails
-        setMessages([initialAssistantMessage]);
-        setInterviewState({ stage: 'greeting', completed: false });
-        setIsNewConversation(true);
-      } finally {
-        setIsLoadingPage(false);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error('Failed to load or create conversation:', error.message, error.stack);
+        } else {
+          console.error('Failed to load or create conversation:', error);
+        }
+        // Do not set error yet, try local storage fallback
       }
+
+      if (!loaded) {
+      }
+
+      if (!loaded) {
+        setError(
+          'Failed to load or create conversation. Please check your connection or try again.',
+        );
+      }
+
+      setIsLoadingPage(false);
     };
 
     if (conversationId) {
       loadOrCreateConversation();
     }
-  }, [interviewState, conversationId, setMessages]); // Depend on conversationId and setMessages
+    // interviewState is intentionally omitted from dependencies to avoid infinite loop.
+    // The effect only needs to run when conversationId or setMessages changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, setMessages]);
 
   // Autoscroll: Scroll to bottom when messages change
   useEffect(() => {
@@ -156,16 +204,19 @@ export default function ChatPage() {
     if (!input.trim() || isChatLoading || isInterviewDone) return;
 
     try {
-      // Save user message to service
-      await localStorageService.updateConversation(
-        conversationId,
-        interviewStateRef.current, // Pass current state
-        {
-          id: createId(), // Generate unique ID for user message
-          role: 'user',
-          content: input,
-        },
-      );
+      // Persist to server
+      await fetch(`/api/conversations/${conversationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: interviewStateRef.current,
+          message: {
+            id: createId(),
+            role: 'user',
+            content: input,
+          },
+        }),
+      });
     } catch (error) {
       console.error('Failed to save user message:', error);
     }
@@ -214,172 +265,203 @@ export default function ChatPage() {
     );
   };
 
-  if (isLoadingPage) {
+  // Removed full-page loading spinner. Loading state is now handled in the chat area.
+
+  // Guard: If interviewState is null/undefined, show loading or fallback UI
+  if (!interviewState) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading conversation...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+          <div className="text-gray-700 mb-4">Loading conversation...</div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Mobile Header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {isNewConversation ? 'New Interview' : 'Interview Session'}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                {getStatusBadge()}
-                {interviewState.candidateName && (
-                  <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
-                )}
-              </div>
+  // Header
+  const header = (
+    <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              {isNewConversation ? 'New Interview' : 'Interview Session'}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              {getStatusBadge()}
+              {interviewState.candidateName && (
+                <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
+              )}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/history')}
-              className="text-xs"
-            >
-              History
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/history')}
+            className="text-xs"
+          >
+            History
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
+            <Home className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Input area
+  const inputArea = (
+    <div className="sticky bottom-0 bg-white border-t px-4 py-4">
+      {isInterviewDone ? (
+        <div className="text-center">
+          <div
+            className={`p-4 rounded-lg ${
+              interviewState.completed
+                ? 'bg-green-50 border border-green-200'
+                : 'bg-red-50 border border-red-200'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {interviewState.completed ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600" />
+              )}
+              <p
+                className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
+              >
+                {interviewState.completed
+                  ? 'Interview Completed Successfully!'
+                  : 'Interview Ended Early'}
+              </p>
+            </div>
+            {interviewState.endReason && (
+              <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
+            )}
+            <p className="text-xs text-gray-500">
+              This conversation is now marked as done. You can review it in your history.
+            </p>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button onClick={() => router.push('/history')} variant="outline" className="flex-1">
+              View History
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
-              <Home className="h-4 w-4" />
+            <Button onClick={() => router.push('/')} className="flex-1">
+              Back to Home
             </Button>
           </div>
         </div>
-      </div>
+      ) : (
+        <form onSubmit={handleCustomSubmit} className="flex gap-2">
+          <Input
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your response..."
+            disabled={isChatLoading || isInterviewDone}
+            className="flex-1 h-12 text-base rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <Button
+            type="submit"
+            disabled={isChatLoading || !input.trim() || isInterviewDone}
+            className="h-12 px-6 rounded-full"
+          >
+            {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
 
-      {/* Chat Messages */}
-      <div className="flex-1 flex flex-col">
-        <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
-          <div className="space-y-4 py-4 pb-20">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200'
-                    }`}
-                  >
-                    {message.role === 'user' ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Bot className="h-4 w-4 text-gray-600" />
-                    )}
-                  </div>
-                  <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-900'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">
-                      {message.content.replace(/\[STATE:.*?\]/s, '').trim()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isChatLoading && (
+  // Render
+  return (
+    <>
+      {/* Header */}
+      {header}
+      {/* Chat Messages Area */}
+      <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
+        <div className="space-y-4 py-4 pb-20">
+          {isLoadingPage ? (
+            // Skeleton loading state for chat area
+            <>
               <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-500">Typing...</span>
-                </div>
+                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
+                <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
               </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Input Area */}
-        <div className="sticky bottom-0 bg-white border-t px-4 py-4">
-          {isInterviewDone ? (
-            <div className="text-center">
-              <div
-                className={`p-4 rounded-lg ${
-                  interviewState.completed
-                    ? 'bg-green-50 border border-green-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  {interviewState.completed ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  )}
-                  <p
-                    className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
-                  >
-                    {interviewState.completed
-                      ? 'Interview Completed Successfully!'
-                      : 'Interview Ended Early'}
-                  </p>
-                </div>
-                {interviewState.endReason && (
-                  <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  This conversation is now marked as done. You can review it in your history.
-                </p>
+            </>
+          ) : error ? (
+            // Only show error bubble if error
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-red-200 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-red-600" />
               </div>
-              <div className="flex gap-2 mt-3">
-                <Button
-                  onClick={() => router.push('/history')}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  View History
-                </Button>
-                <Button onClick={() => router.push('/')} className="flex-1">
-                  Back to Home
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                <span className="text-sm text-red-700">{error}</span>
+                <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                  Retry
                 </Button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleCustomSubmit} className="flex gap-2">
-              <Input
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Type your response..."
-                disabled={isChatLoading || isInterviewDone}
-                className="flex-1 h-12 text-base rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <Button
-                type="submit"
-                disabled={isChatLoading || !input.trim() || isInterviewDone}
-                className="h-12 px-6 rounded-full"
-              >
-                {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
-              </Button>
-            </form>
+            <>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.role === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border-2 border-gray-200'
+                      }`}
+                    >
+                      {message.role === 'user' ? (
+                        <User className="h-4 w-4" />
+                      ) : (
+                        <Bot className="h-4 w-4 text-gray-600" />
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border border-gray-200 text-gray-900'
+                      }`}
+                    >
+                      <p className="text-sm leading-relaxed">
+                        {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
+                    <Bot className="h-4 w-4 text-gray-600" />
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    <span className="text-sm text-gray-500">Typing...</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
-      </div>
-    </div>
+      </ScrollArea>
+      {/* Input Area */}
+      {inputArea}
+    </>
   );
 }

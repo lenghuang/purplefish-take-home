@@ -15,10 +15,8 @@ import {
   History,
   Sparkles,
 } from 'lucide-react';
-import {
-  localStorageService,
-  type ConversationSummary,
-} from '@/lib/services/local-storage-service';
+import { clientStorageService } from '@/lib/services/client-storage-service';
+import type { ConversationSummary } from '@/lib/services/local-storage-service';
 
 export default function HomePage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -27,17 +25,25 @@ export default function HomePage() {
   // Load conversations from localStorageService on mount
   useEffect(() => {
     const loadConversations = async () => {
-      const saved = await localStorageService.getAllConversations();
-      setConversations(saved);
+      // Try to get from server first, fallback to local
+      try {
+        const res = await fetch('/api/conversations');
+        if (res.ok) {
+          const serverConvs: ConversationSummary[] = await res.json();
+          setConversations(serverConvs);
+        } else {
+          throw new Error('Server fetch failed');
+        }
+      } catch {
+        // Fallback to local storage
+        const localConvs = await clientStorageService.getAllLocal();
+        setConversations(localConvs);
+      }
     };
     loadConversations();
   }, []);
 
-  const startNewInterview = () => {
-    // Generate a new conversation ID and navigate to chat
-    const newId = Math.random().toString(36).substring(2, 15);
-    router.push(`/chat/${newId}`);
-  };
+  // Start New Interview now navigates to /chat/new; client-side ID generation removed.
 
   const loadConversation = (conversationId: string) => {
     router.push(`/chat/${conversationId}`);
@@ -84,7 +90,11 @@ export default function HomePage() {
             Nurses, saving you time and ensuring consistent candidate evaluation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={startNewInterview} size="lg" className="px-8 py-3 text-base">
+            <Button
+              onClick={() => router.push('/chat/new')}
+              size="lg"
+              className="px-8 py-3 text-base"
+            >
               <Plus className="h-5 w-5 mr-2" />
               Start New Interview
             </Button>
