@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
 import type { InterviewState, Message } from '@/lib/services/local-storage-service';
+import { ChatShell } from '../ChatShell';
 
 const initialAssistantMessage: Message = {
   id: 'initial-assistant-message', // Unique ID for the initial message
@@ -267,20 +268,6 @@ export default function ChatPage() {
 
   // Removed full-page loading spinner. Loading state is now handled in the chat area.
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-lg font-semibold mb-2">Error</div>
-          <div className="text-gray-700 mb-4">{error}</div>
-          <Button onClick={() => window.location.reload()} variant="outline">
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   // Guard: If interviewState is null/undefined, show loading or fallback UI
   if (!interviewState) {
     return (
@@ -293,173 +280,183 @@ export default function ChatPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Mobile Header */}
-      <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">
-                {isNewConversation ? 'New Interview' : 'Interview Session'}
-              </h1>
-              <div className="flex items-center gap-2 mt-1">
-                {getStatusBadge()}
-                {interviewState.candidateName && (
-                  <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/history')}
-              className="text-xs"
-            >
-              History
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
-              <Home className="h-4 w-4" />
-            </Button>
+  // Header
+  const header = (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">
+            {isNewConversation ? 'New Interview' : 'Interview Session'}
+          </h1>
+          <div className="flex items-center gap-2 mt-1">
+            {getStatusBadge()}
+            {interviewState.candidateName && (
+              <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Chat Messages */}
-      <div className="flex-1 flex flex-col">
-        <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
-          <div className="space-y-4 py-4 pb-20">
-            {isLoadingPage ? (
-              // Skeleton loading state for chat area
-              <>
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
-                  <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
-                </div>
-              </>
-            ) : (
-              <>
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          message.role === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white border-2 border-gray-200'
-                        }`}
-                      >
-                        {message.role === 'user' ? (
-                          <User className="h-4 w-4" />
-                        ) : (
-                          <Bot className="h-4 w-4 text-gray-600" />
-                        )}
-                      </div>
-                      <div
-                        className={`rounded-2xl px-4 py-3 ${
-                          message.role === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white border border-gray-200 text-gray-900'
-                        }`}
-                      >
-                        <p className="text-sm leading-relaxed">
-                          {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {isChatLoading && (
-                  <div className="flex gap-3 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                      <span className="text-sm text-gray-500">Typing...</span>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </ScrollArea>
-
-        {/* Input Area */}
-        <div className="sticky bottom-0 bg-white border-t px-4 py-4">
-          {isInterviewDone ? (
-            <div className="text-center">
-              <div
-                className={`p-4 rounded-lg ${
-                  interviewState.completed
-                    ? 'bg-green-50 border border-green-200'
-                    : 'bg-red-50 border border-red-200'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  {interviewState.completed ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  )}
-                  <p
-                    className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
-                  >
-                    {interviewState.completed
-                      ? 'Interview Completed Successfully!'
-                      : 'Interview Ended Early'}
-                  </p>
-                </div>
-                {interviewState.endReason && (
-                  <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
-                )}
-                <p className="text-xs text-gray-500">
-                  This conversation is now marked as done. You can review it in your history.
-                </p>
-              </div>
-              <div className="flex gap-2 mt-3">
-                <Button
-                  onClick={() => router.push('/history')}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  View History
-                </Button>
-                <Button onClick={() => router.push('/')} className="flex-1">
-                  Back to Home
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleCustomSubmit} className="flex gap-2">
-              <Input
-                value={input}
-                onChange={handleInputChange}
-                placeholder="Type your response..."
-                disabled={isChatLoading || isInterviewDone}
-                className="flex-1 h-12 text-base rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <Button
-                type="submit"
-                disabled={isChatLoading || !input.trim() || isInterviewDone}
-                className="h-12 px-6 rounded-full"
-              >
-                {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
-              </Button>
-            </form>
-          )}
-        </div>
+      <div className="flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/history')}
+          className="text-xs"
+        >
+          History
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
+          <Home className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
+
+  // Messages area
+  const messagesArea = (
+    <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
+      <div className="space-y-4 py-4 pb-20">
+        {isLoadingPage ? (
+          // Skeleton loading state for chat area
+          <>
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
+              <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
+            </div>
+          </>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border-2 border-gray-200'
+                    }`}
+                  >
+                    {message.role === 'user' ? (
+                      <User className="h-4 w-4" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-gray-600" />
+                    )}
+                  </div>
+                  <div
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border border-gray-200 text-gray-900'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed">
+                      {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Error as a chat bubble */}
+            {error && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-red-600" />
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                  <span className="text-sm text-red-700">{error}</span>
+                  <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            )}
+            {isChatLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-gray-600" />
+                </div>
+                <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  <span className="text-sm text-gray-500">Typing...</span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </ScrollArea>
+  );
+
+  // Input area
+  const inputArea = (
+    <div className="sticky bottom-0 bg-white border-t px-4 py-4">
+      {isInterviewDone ? (
+        <div className="text-center">
+          <div
+            className={`p-4 rounded-lg ${
+              interviewState.completed
+                ? 'bg-green-50 border border-green-200'
+                : 'bg-red-50 border border-red-200'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {interviewState.completed ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600" />
+              )}
+              <p
+                className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
+              >
+                {interviewState.completed
+                  ? 'Interview Completed Successfully!'
+                  : 'Interview Ended Early'}
+              </p>
+            </div>
+            {interviewState.endReason && (
+              <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
+            )}
+            <p className="text-xs text-gray-500">
+              This conversation is now marked as done. You can review it in your history.
+            </p>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button onClick={() => router.push('/history')} variant="outline" className="flex-1">
+              View History
+            </Button>
+            <Button onClick={() => router.push('/')} className="flex-1">
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleCustomSubmit} className="flex gap-2">
+          <Input
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Type your response..."
+            disabled={isChatLoading || isInterviewDone}
+            className="flex-1 h-12 text-base rounded-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <Button
+            type="submit"
+            disabled={isChatLoading || !input.trim() || isInterviewDone}
+            className="h-12 px-6 rounded-full"
+          >
+            {isChatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+
+  return <ChatShell header={header} messagesArea={messagesArea} inputArea={inputArea} />;
 }
