@@ -56,11 +56,8 @@ export async function POST() {
     }
 
     return NextResponse.json({ id: conversation.id });
-  } catch (error: any) {
-    console.error(
-      '[POST /api/conversations] Failed to create conversation:',
-      error && error.stack ? error.stack : error,
-    );
+  } catch (error) {
+    console.error('[POST /api/conversations] Failed to create conversation:', error);
     return NextResponse.json(
       {
         error: `Failed to create conversation: ${error && error.message ? error.message : String(error)}`,

@@ -24,7 +24,7 @@ export default function NewChatPage() {
         } else {
           throw new Error('No conversation ID returned');
         }
-      } catch (err) {
+      } catch {
         // Optionally handle error (could show a toast or error skeleton)
         router.replace('/'); // fallback to home
       }

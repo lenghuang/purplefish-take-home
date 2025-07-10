@@ -18,8 +18,6 @@ import {
 import { clientStorageService } from '@/lib/services/client-storage-service';
 import type { ConversationSummary } from '@/lib/services/local-storage-service';
 
-import { nanoid } from 'nanoid';
-
 export default function HomePage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const router = useRouter();
