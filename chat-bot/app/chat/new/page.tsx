@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChatShell } from '../ChatShell';
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -35,8 +34,10 @@ export default function NewChatPage() {
 
   // Skeleton UI matching chat view
   const header = (
-    <div className="flex items-center px-4 py-3">
-      <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+    <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
+      <div className="flex items-center px-4 py-3">
+        <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+      </div>
     </div>
   );
 
@@ -73,5 +74,11 @@ export default function NewChatPage() {
     </div>
   );
 
-  return <ChatShell header={header} messagesArea={messagesArea} inputArea={inputArea} />;
+  return (
+    <>
+      {header}
+      {messagesArea}
+      {inputArea}
+    </>
+  );
 }

@@ -12,7 +12,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
 import type { InterviewState, Message } from '@/lib/services/local-storage-service';
-import { ChatShell } from '../ChatShell';
 
 const initialAssistantMessage: Message = {
   id: 'initial-assistant-message', // Unique ID for the initial message
@@ -282,117 +281,39 @@ export default function ChatPage() {
 
   // Header
   const header = (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">
-            {isNewConversation ? 'New Interview' : 'Interview Session'}
-          </h1>
-          <div className="flex items-center gap-2 mt-1">
-            {getStatusBadge()}
-            {interviewState.candidateName && (
-              <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
-            )}
+    <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="p-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              {isNewConversation ? 'New Interview' : 'Interview Session'}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              {getStatusBadge()}
+              {interviewState.candidateName && (
+                <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/history')}
-          className="text-xs"
-        >
-          History
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
-          <Home className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push('/history')}
+            className="text-xs"
+          >
+            History
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/')} className="text-xs">
+            <Home className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
-  );
-
-  // Messages area
-  const messagesArea = (
-    <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
-      <div className="space-y-4 py-4 pb-20">
-        {isLoadingPage ? (
-          // Skeleton loading state for chat area
-          <>
-            <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
-              <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
-            </div>
-          </>
-        ) : (
-          <>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border-2 border-gray-200'
-                    }`}
-                  >
-                    {message.role === 'user' ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Bot className="h-4 w-4 text-gray-600" />
-                    )}
-                  </div>
-                  <div
-                    className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-gray-200 text-gray-900'
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">
-                      {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {/* Error as a chat bubble */}
-            {error && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-red-600" />
-                </div>
-                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <span className="text-sm text-red-700">{error}</span>
-                  <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            )}
-            {isChatLoading && (
-              <div className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-gray-600" />
-                </div>
-                <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-500">Typing...</span>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </ScrollArea>
   );
 
   // Input area
@@ -458,5 +379,89 @@ export default function ChatPage() {
     </div>
   );
 
-  return <ChatShell header={header} messagesArea={messagesArea} inputArea={inputArea} />;
+  // Render
+  return (
+    <>
+      {/* Header */}
+      {header}
+      {/* Chat Messages Area */}
+      <ScrollArea className="flex-1 px-4" viewportRef={viewportRef}>
+        <div className="space-y-4 py-4 pb-20">
+          {isLoadingPage ? (
+            // Skeleton loading state for chat area
+            <>
+              <div className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" />
+                <div className="rounded-2xl px-4 py-3 bg-white border border-gray-200 w-2/3 h-6" />
+              </div>
+            </>
+          ) : error ? (
+            // Only show error bubble if error
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-red-200 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-red-600" />
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                <span className="text-sm text-red-700">{error}</span>
+                <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`flex gap-3 max-w-[85%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.role === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border-2 border-gray-200'
+                      }`}
+                    >
+                      {message.role === 'user' ? (
+                        <User className="h-4 w-4" />
+                      ) : (
+                        <Bot className="h-4 w-4 text-gray-600" />
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border border-gray-200 text-gray-900'
+                      }`}
+                    >
+                      <p className="text-sm leading-relaxed">
+                        {message.content.replace(/\[STATE:[\s\S]*?\]/, '').trim()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
+                    <Bot className="h-4 w-4 text-gray-600" />
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    <span className="text-sm text-gray-500">Typing...</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </ScrollArea>
+      {/* Input Area */}
+      {inputArea}
+    </>
+  );
 }
