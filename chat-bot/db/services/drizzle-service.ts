@@ -155,10 +155,10 @@ class DrizzleService {
     } else if (typeof serialized.lastUpdated === 'string') {
       serialized.lastUpdated = new Date(Date.parse(serialized.lastUpdated));
     }
-    // Try update first
-    const updated = await db
-      .update(phaseStates)
-      .set({
+    // Use Drizzle's onConflictDoUpdate for atomic upsert
+    await db
+      .insert(phaseStates)
+      .values({
         ...serialized,
         lastUpdated:
           typeof serialized.lastUpdated === 'number'
@@ -167,18 +167,18 @@ class DrizzleService {
               ? new Date(Date.parse(serialized.lastUpdated))
               : serialized.lastUpdated,
       })
-      .where(eq(phaseStates.id, phaseState.id));
-    if (updated.changes && updated.changes > 0) return;
-    // If not updated, insert
-    await db.insert(phaseStates).values({
-      ...serialized,
-      lastUpdated:
-        typeof serialized.lastUpdated === 'number'
-          ? new Date(serialized.lastUpdated)
-          : typeof serialized.lastUpdated === 'string'
-            ? new Date(Date.parse(serialized.lastUpdated))
-            : serialized.lastUpdated,
-    });
+      .onConflictDoUpdate({
+        target: phaseStates.id,
+        set: {
+          ...serialized,
+          lastUpdated:
+            typeof serialized.lastUpdated === 'number'
+              ? new Date(serialized.lastUpdated)
+              : typeof serialized.lastUpdated === 'string'
+                ? new Date(Date.parse(serialized.lastUpdated))
+                : serialized.lastUpdated,
+        },
+      });
   }
   /**
    * Get a conversation by ID, including messages and latest phase state.
@@ -219,25 +219,23 @@ class DrizzleService {
    * - Inserts the new message.
    */
   async upsertConversation(id: string, state: any, message: any): Promise<void> {
-    // Upsert conversation row (update updatedAt, lastMessage, etc.)
+    // Upsert conversation row (update updatedAt, lastMessage, etc.) atomically
     const now = new Date();
-    const convRows = await db.select().from(conversations).where(eq(conversations.id, id));
-    if (convRows.length) {
-      await db
-        .update(conversations)
-        .set({
-          updatedAt: now,
-          lastMessage: message.content,
-        })
-        .where(eq(conversations.id, id));
-    } else {
-      await db.insert(conversations).values({
+    await db
+      .insert(conversations)
+      .values({
         id,
         createdAt: now,
         updatedAt: now,
         lastMessage: message.content,
+      })
+      .onConflictDoUpdate({
+        target: conversations.id,
+        set: {
+          updatedAt: now,
+          lastMessage: message.content,
+        },
       });
-    }
 
     // Upsert phase state
     if (state && state.id) {

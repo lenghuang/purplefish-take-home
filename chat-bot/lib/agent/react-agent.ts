@@ -60,7 +60,8 @@ export class ReActAgent {
     );
 
     // DEBUG LOG: List all tool names at agent construction
-    console.log(
+    // Maintenance Suggestion: For production, consider using a proper logging library.
+    console.debug(
       '[ReActAgent] Constructed with tools:',
       structuredTools.map((t) => t.name || t?.description || 'unnamed'),
     );
@@ -91,8 +92,9 @@ export class ReActAgent {
     });
 
     // DEBUG LOG: Print the full agent output for inspection
-    console.log('[ReActAgent] messages:', JSON.stringify(messages, null, 2));
-    console.log('[ReActAgent] agentOutput:', JSON.stringify(agentOutput, null, 2));
+    // Maintenance Suggestion: For production, consider using a proper logging library or set these to console.debug.
+    console.debug('[ReActAgent] messages:', JSON.stringify(messages, null, 2));
+    console.debug('[ReActAgent] agentOutput:', JSON.stringify(agentOutput, null, 2));
 
     // The final agent reply is typically in the last AIMessage
     const lastMessage = agentOutput.messages[agentOutput.messages.length - 1];
@@ -100,10 +102,16 @@ export class ReActAgent {
 
     // Loop through all messages to track tool calls + observations
     for (const msg of agentOutput.messages) {
-      const msgType = (msg as any)._getType?.() || '';
+      // Code Quality Suggestion: Using `as any` can sometimes hide underlying type issues.
+      // Prefer a type-safe check if possible. If LangChain provides a `type` property, use it.
+      // Otherwise, fallback to _getType with a comment.
+      const msgType =
+        typeof (msg as any)._getType === 'function'
+          ? (msg as any)._getType()
+          : (msg as { type?: string }).type || '';
       if (msgType === 'ai' && msg.tool_calls && msg.tool_calls.length) {
         // DEBUG LOG: Tool call found
-        console.log('[ReActAgent] Tool call detected in message:', msg.tool_calls);
+        console.debug('[ReActAgent] Tool call detected in message:', msg.tool_calls);
         // There's an AIMessage with tool calls
         for (const tc of msg.tool_calls) {
           agentState.thoughtProcess.push({

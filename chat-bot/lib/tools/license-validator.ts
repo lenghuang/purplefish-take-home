@@ -25,6 +25,10 @@ export const licenseValidatorTool: Tool = {
   description: 'Checks if a given license is valid based on number format and expiry date.',
   // The parameters property references our Zod schema for input validation.
   parameters: licenseSchema,
+  /**
+   * Adds JSDoc for clarity.
+   * @returns {{isValid: boolean, message: string, licenseNumber: string, state: string, expiryDate: string}}
+   */
   // The execute function receives the validated inputs and returns a result.
   execute: async (params) => {
     const { licenseNumber, expiryDate, state } = params;

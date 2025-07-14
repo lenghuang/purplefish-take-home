@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, User, Bot, CheckCircle, XCircle, ArrowLeft, Home } from 'lucide-react';
-import type { InterviewState, Message } from '@/lib/services/local-storage-service';
+import type { PhaseState } from '@/db/services/drizzle-service';
+import type { Message } from '@/lib/services/local-storage-service';
 
 const initialAssistantMessage: Message = {
   id: 'initial-assistant-message', // Unique ID for the initial message
@@ -37,15 +38,12 @@ export default function ChatPage() {
     );
   }
 
-  const [interviewState, setInterviewState] = useState<InterviewState>({
-    stage: 'greeting',
-    completed: false,
-  });
+  const [phaseState, setPhaseState] = useState<PhaseState | null>(null);
   const [isNewConversation, setIsNewConversation] = useState(true);
   const [isLoadingPage, setIsLoadingPage] = useState(true); // New loading state for page data
   const [error, setError] = useState<string | null>(null); // Error state
 
-  const interviewStateRef = useRef<InterviewState>(interviewState);
+  const phaseStateRef = useRef<PhaseState | null>(phaseState);
   const viewportRef = useRef<HTMLDivElement>(null);
 
   // Declare createId function here if needed
@@ -63,8 +61,8 @@ export default function ChatPage() {
     id: conversationId,
     initialMessages: [initialAssistantMessage], // This is a fallback, actual messages loaded from service
     body: {
-      get interviewState() {
-        return interviewStateRef.current;
+      get phaseState() {
+        return phaseStateRef.current;
       },
       conversationId: conversationId,
       get userMessage() {
@@ -78,12 +76,12 @@ export default function ChatPage() {
 
       try {
         const stateMatch = message.content.match(/\[STATE:([\s\S]*?)\]/);
-        let newState = interviewStateRef.current;
+        let newState = phaseStateRef.current;
         if (stateMatch) {
           newState = JSON.parse(stateMatch[1]);
-          console.log('Parsed state from message:', newState);
-          setInterviewState(newState);
-          console.log('UI interviewState after setInterviewState:', newState);
+          console.log('Parsed phase state from message:', newState);
+          setPhaseState(newState);
+          console.log('UI phaseState after setPhaseState:', newState);
         }
 
         // Persist to server
@@ -111,12 +109,13 @@ export default function ChatPage() {
   });
 
   // Check if the interview is done (completed or ended early)
-  const isInterviewDone = interviewState.completed || interviewState.endedEarly;
+  const isInterviewDone =
+    phaseState?.status === 'completed' || phaseState?.status === 'ended_early';
 
   // Update the ref whenever state changes
   useEffect(() => {
-    interviewStateRef.current = interviewState;
-  }, [interviewState]);
+    phaseStateRef.current = phaseState;
+  }, [phaseState]);
 
   /**
    * Load existing conversation or create new one.
@@ -149,7 +148,7 @@ export default function ChatPage() {
             return;
           }
           setMessages(conversation.messages);
-          setInterviewState(conversation.state);
+          setPhaseState(conversation.state);
           setIsNewConversation(false);
           loaded = true;
         } else {
@@ -158,7 +157,7 @@ export default function ChatPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              state: interviewStateRef.current,
+              state: phaseStateRef.current,
               message: initialAssistantMessage,
             }),
           });
@@ -225,7 +224,7 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          state: interviewStateRef.current,
+          state: phaseStateRef.current,
           message: {
             id: createId(),
             role: 'user',
@@ -258,7 +257,7 @@ export default function ChatPage() {
   };
 
   const getStatusBadge = () => {
-    if (interviewState.completed) {
+    if (phaseState?.status === 'completed') {
       return (
         <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-700">
           <CheckCircle className="h-3 w-3 mr-1" />
@@ -266,7 +265,7 @@ export default function ChatPage() {
         </Badge>
       );
     }
-    if (interviewState.endedEarly) {
+    if (phaseState?.status === 'ended_early') {
       return (
         <Badge variant="destructive" className="text-xs">
           <XCircle className="h-3 w-3 mr-1" />
@@ -276,7 +275,7 @@ export default function ChatPage() {
     }
     return (
       <Badge variant="outline" className="text-xs">
-        {getStageDisplay(interviewState.stage)}
+        {getStageDisplay(phaseState?.phaseId || '')}
       </Badge>
     );
   };
@@ -284,7 +283,7 @@ export default function ChatPage() {
   // Removed full-page loading spinner. Loading state is now handled in the chat area.
 
   // Guard: If interviewState is null/undefined, show loading or fallback UI
-  if (!interviewState) {
+  if (!phaseState) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -309,9 +308,7 @@ export default function ChatPage() {
             </h1>
             <div className="flex items-center gap-2 mt-1">
               {getStatusBadge()}
-              {interviewState.candidateName && (
-                <span className="text-sm text-gray-500">• {interviewState.candidateName}</span>
-              )}
+              {/* candidateName is not present in PhaseState; remove or adapt if needed */}
             </div>
           </div>
         </div>
@@ -339,28 +336,25 @@ export default function ChatPage() {
         <div className="text-center">
           <div
             className={`p-4 rounded-lg ${
-              interviewState.completed
+              phaseState?.status === 'completed'
                 ? 'bg-green-50 border border-green-200'
                 : 'bg-red-50 border border-red-200'
             }`}
           >
             <div className="flex items-center justify-center gap-2 mb-2">
-              {interviewState.completed ? (
+              {phaseState?.status === 'completed' ? (
                 <CheckCircle className="h-5 w-5 text-green-600" />
               ) : (
                 <XCircle className="h-5 w-5 text-red-600" />
               )}
               <p
-                className={`font-medium ${interviewState.completed ? 'text-green-800' : 'text-red-800'}`}
+                className={`font-medium ${phaseState?.status === 'completed' ? 'text-green-800' : 'text-red-800'}`}
               >
-                {interviewState.completed
+                {phaseState?.status === 'completed'
                   ? 'Interview Completed Successfully!'
                   : 'Interview Ended Early'}
               </p>
             </div>
-            {interviewState.endReason && (
-              <p className="text-sm text-gray-600 mb-3">{interviewState.endReason}</p>
-            )}
             <p className="text-xs text-gray-500">
               This conversation is now marked as done. You can review it in your history.
             </p>

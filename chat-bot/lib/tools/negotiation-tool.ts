@@ -27,6 +27,10 @@ export const negotiationTool: Tool = {
   description:
     'Helps suggest a negotiation range and talking points based on current and expected salary.',
   parameters: negotiationSchema,
+  /**
+   * Adds JSDoc for clarity.
+   * @returns {{negotiationRangeAdvice: string, talkingPoints: string[], suggestedMin: number, suggestedMax: number}}
+   */
   execute: async (params) => {
     const { currentSalary, expectedSalary, leveragePoints } = params;
 

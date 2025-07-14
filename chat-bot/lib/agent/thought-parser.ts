@@ -26,6 +26,11 @@ interface ThoughtParseResult {
  *
  * In a real ReAct approach, you'd have a more robust parsing logic.
  */
+/**
+ * Future Improvement: The current parsing is robust for this demo. For a more performant solution,
+ * we could look into streaming LLM outputs and parsing tokens directly to identify tool calls as they happen,
+ * rather than waiting for the full response string.
+ */
 export function parseThoughts(llmOutput: string): ThoughtParseResult {
   let thought = '';
   let action = '';
