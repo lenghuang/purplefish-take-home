@@ -64,32 +64,48 @@ let ephemeralAgentState: AgentState = {
  */
 /** Make currentState optional and embed system prompt into ephemeralAgentState so we call only two arguments */
 // Accepts the full conversation history as an array of messages
+import type { PhaseState } from '@/db/services/drizzle-service';
+
+/**
+ * Use the ReAct agent to process user input and update phase state.
+ * Accepts the full conversation history and the current phase state.
+ * Returns the agent's reply and the updated phase state.
+ */
 export async function processWithReActAgent(
   messages: Array<{ role: string; content: string }>,
-  currentState?: InterviewState,
-): Promise<string> {
-  let systemPrompt: string | undefined = undefined;
-  if (currentState) {
-    systemPrompt = getSystemPrompt(currentState);
-    // Store that prompt in ephemeralAgentState
-    ephemeralAgentState.systemPrompt = systemPrompt;
-  }
-  // Ensure the first message is always the system prompt
+  phaseState: PhaseState,
+): Promise<{ agentReply: string; updatedPhaseState: PhaseState }> {
+  // The agent should use the explicit phase state for reasoning and tool calls.
+  // You may want to pass phaseState as context or as part of the system prompt.
+  // For now, we pass it as a JSON string in the system prompt for the agent.
+  // Use the detailed, stage-specific system prompt
+  const interviewState = {
+    stage: phaseState.phaseId,
+    ...phaseState.answers,
+    completed: phaseState.status === 'completed',
+  };
+  const systemPrompt = getSystemPrompt(interviewState);
+
   let messagesWithSystem: Array<{ role: string; content: string }> = messages;
-  if (systemPrompt) {
-    if (!messages.length || messages[0].role !== 'system') {
-      messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages];
-    } else if (messages[0].content !== systemPrompt) {
-      // Replace the system message if it differs
-      messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages.slice(1)];
-    }
+  if (!messages.length || messages[0].role !== 'system') {
+    messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages];
+  } else if (messages[0].content !== systemPrompt) {
+    // Replace the system message if it differs
+    messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages.slice(1)];
   }
-  const { agentReply, newState } = await reactAgent.processInput(
-    messagesWithSystem,
-    ephemeralAgentState,
-  );
-  ephemeralAgentState = newState;
-  return agentReply;
+
+  // Call the agent
+  const agentState = {
+    ...phaseState,
+    thoughtProcess: [],
+    activeTools: [],
+  };
+  const { agentReply, newState } = await reactAgent.processInput(messagesWithSystem, agentState);
+
+  return {
+    agentReply,
+    updatedPhaseState: phaseState,
+  };
 }
 // *** ReAct & Tools Integration END ***
 

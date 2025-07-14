@@ -5,7 +5,8 @@
 
 import { drizzleService } from '@/db/services/drizzle-service';
 import { nanoid } from 'nanoid';
-import type { InterviewState, Message } from '@/lib/services/local-storage-service';
+import type { Message } from '@/lib/services/local-storage-service';
+import type { PhaseState } from '@/db/services/drizzle-service';
 
 // We import the main logic from chat-service to handle user inputs, structured data extraction,
 // and possible FAQ redirection.
@@ -21,30 +22,44 @@ export async function getAllConversations() {
 /**
  * Clears all conversations from the system.
  */
+import { db } from '@/db/index';
+import { conversations, phaseStates, messages } from '@/db/schema';
+
+/**
+ * Deletes all conversations, phase states, and messages from the database.
+ */
 export async function clearAllConversations() {
-  return drizzleService.clearAllConversations();
+  await db.delete(messages);
+  await db.delete(phaseStates);
+  await db.delete(conversations);
 }
 
 /**
  * Creates a new conversation with a default "intro" stage and an initial greeting message.
  * In the rest of the flow, we'll handle transitions to "greeting" or other stages as needed.
  */
+/**
+ * Creates a new conversation with a default "intro" phase state and an initial greeting message.
+ */
 export async function createConversation() {
-  // Default initial interview state
-  const initialState: InterviewState = {
-    stage: 'intro',
-    completed: false,
+  const id = nanoid();
+  const phaseState = {
+    id: nanoid(),
+    conversationId: id,
+    phaseId: 'intro',
+    status: 'in_progress',
+    completedQuestions: [],
+    answers: {},
+    lastUpdated: new Date(),
   };
-
-  // Default initial message from assistant
-  const initialMessage: Message = {
+  const initialMessage = {
     id: nanoid(),
     role: 'assistant',
-    content:
-      "Welcome! Let's start your interview. Please introduce yourself or ask your first question.",
+    content: 'Welcome! This is the start of your interview.',
+    createdAt: new Date(),
   };
-
-  return drizzleService.createConversation(initialState, initialMessage);
+  await drizzleService.upsertConversation(id, phaseState, initialMessage);
+  return { id };
 }
 
 /**
@@ -58,17 +73,28 @@ export async function processConversationMessage(
   conversationId: string,
   userMessageContent: string,
 ) {
-  const conversation = await drizzleService.getConversation(conversationId);
-  if (!conversation) {
-    throw new Error('Conversation not found.');
-  }
+  // Load all messages for the conversation
+  // NOTE: Old conversation state model removed. If you need messages, load them from phase state or another new source.
+  let messages: Message[] = [];
 
-  let { messages, state: interviewState } = conversation;
-  if (!interviewState) {
-    interviewState = { stage: 'intro', completed: false };
+  // Load or initialize phase state
+  let phaseState: PhaseState | null = await drizzleService.getPhaseState(conversationId);
+  if (!phaseState) {
+    // Initialize a new phase state for this conversation
+    phaseState = {
+      id: nanoid(),
+      conversationId,
+      phaseId: 'intro',
+      status: 'in_progress',
+      completedQuestions: [],
+      answers: {},
+      lastUpdated: new Date(),
+    };
+    await drizzleService.upsertPhaseState(phaseState);
   }
+  // At this point, phaseState is guaranteed to be PhaseState (not null)
 
-  // Create a user message object
+  // Add the user message
   const userMessage: Message = {
     id: nanoid(),
     role: 'user',
@@ -76,45 +102,27 @@ export async function processConversationMessage(
   };
   messages.push(userMessage);
 
-  /* Removed direct FAQ handling. Let the ReAct agent handle FAQ logic via the FAQ tool. */
+  // Pass the phase state and messages to the agent (update this to use phase state)
+  // You may need to update processWithReActAgent to accept phaseState and return updated phaseState
+  const { agentReply, updatedPhaseState } = await processWithReActAgent(
+    messages,
+    phaseState as PhaseState,
+  );
 
-  // If it's not an FAQ question, proceed with normal interview flow
+  // Add the agent's reply
+  const agentMessage: Message = {
+    id: nanoid(),
+    role: 'assistant',
+    content: agentReply,
+  };
+  messages.push(agentMessage);
 
-  // If the user is in "intro" stage, we can shift them to "greeting"
-  if (interviewState.stage === 'intro') {
-    interviewState.stage = 'greeting';
-  }
+  // Persist updated phase state
+  await drizzleService.upsertPhaseState(updatedPhaseState);
 
-  // Use existing function to extract structured updates
-  const updates = extractStructuredData(userMessageContent, interviewState);
-  console.log('[DEBUG] extractStructuredData updates:', updates);
-  interviewState = { ...interviewState, ...updates };
-  console.log('[DEBUG] New interviewState after updates:', interviewState);
+  // Optionally, persist messages if needed (depends on your message persistence model)
+  // await drizzleService.saveMessages(conversationId, [userMessage, agentMessage]);
 
-  // If not completed or ended, call the ReAct agent for reasoning or tool calls
-  let agentMessage: Message | null = null;
-  if (!interviewState.completed && !interviewState.endedEarly) {
-    // DEBUG: Log the messages array before passing to agent
-    console.log('DEBUG: Messages passed to agent:', JSON.stringify(messages, null, 2));
-    const agentReply = await processWithReActAgent(messages, interviewState);
-
-    agentMessage = {
-      id: nanoid(),
-      role: 'assistant',
-      content: agentReply,
-    };
-    messages.push(agentMessage);
-  }
-
-  // Persist user message
-  await drizzleService.updateConversation(conversationId, interviewState, userMessage);
-
-  // If we created an agent message, persist that as well
-  if (agentMessage) {
-    await drizzleService.updateConversation(conversationId, interviewState, agentMessage);
-  }
-
-  // Return the latest assistant message or a fallback if ended
-  const lastMsg = messages[messages.length - 1];
-  return lastMsg?.content || 'Interview ended or completed.';
+  // Return the latest assistant message
+  return agentReply;
 }

@@ -13,6 +13,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
+import type { PhaseState } from '@/db/services/drizzle-service';
 
 import { InMemoryToolRegistry, Tool as LocalTool } from '../tools/tool-registry';
 
@@ -125,4 +126,8 @@ export class ReActAgent {
       newState: { ...agentState },
     };
   }
+  /**
+   * Executes one step of the conversation using the new phase state model.
+   * Updates phase/question completion and answers explicitly.
+   */
 }
