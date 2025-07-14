@@ -234,7 +234,19 @@ class DrizzleService {
         state: true,
       },
     });
+    // DEBUG: Log the number and content of messages fetched for the conversation
+    console.log(
+      'DEBUG: getConversation fetched messages:',
+      (conv.messages ?? []).length,
+      JSON.stringify(conv.messages, null, 2),
+    );
     if (!conv) return null;
+    // DEBUG: Log the number and content of messages fetched for the conversation
+    console.log(
+      'DEBUG: getConversation fetched messages:',
+      (conv!.messages ?? []).length,
+      JSON.stringify(conv!.messages, null, 2),
+    );
 
     // Compose Conversation object
     return {

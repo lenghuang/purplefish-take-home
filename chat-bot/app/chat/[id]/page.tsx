@@ -22,7 +22,20 @@ const initialAssistantMessage: Message = {
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
-  const conversationId = params.id as string;
+  const idFromParams = params.id;
+  let conversationId =
+    typeof idFromParams === 'string' && idFromParams.trim() ? idFromParams.trim() : '';
+  if (!conversationId) {
+    const newCid = createId();
+    router.replace(`/chat/${newCid}`);
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-700 mb-4">Creating new conversation...</p>
+        </div>
+      </div>
+    );
+  }
 
   const [interviewState, setInterviewState] = useState<InterviewState>({
     stage: 'greeting',
@@ -54,6 +67,9 @@ export default function ChatPage() {
         return interviewStateRef.current;
       },
       conversationId: conversationId,
+      get userMessage() {
+        return input;
+      },
     },
     streamProtocol: 'text',
     onFinish: async (message) => {

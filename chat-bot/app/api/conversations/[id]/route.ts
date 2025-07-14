@@ -17,9 +17,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // POST /api/conversations/[id]
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  req: Request,
+  context: { params: { id: string } | Promise<{ id: string }> },
+) {
   try {
-    const { id } = params;
+    const resolvedParams = await context.params;
+    const { id } = resolvedParams;
     const { state, message } = await req.json();
     const result = await upsertConversation(id, state, message);
     if (!result) {
