@@ -6,7 +6,7 @@ This document provides a high-level overview of the architecture within the `cha
 
 ## 1. System Overview
 
-The `chat-bot` project is a full-stack TypeScript application built with [Next.js](https://nextjs.org/) (React) for the frontend and a modular API backend. It is designed for extensibility, supporting advanced conversational flows, agent-based reasoning, and hybrid state management.
+The `chat-bot` project is a full-stack TypeScript application built with Next.js (React) for the frontend and a modular API backend. It is designed for extensibility, supporting advanced conversational flows, agent-based reasoning, and hybrid state management.
 
 ---
 
@@ -14,29 +14,33 @@ The `chat-bot` project is a full-stack TypeScript application built with [Next.j
 
 ```mermaid
 flowchart TD
-    subgraph Frontend [Frontend (Next.js/React)]
-        A1[User Interface<br/>(pages/components)]
-        A2[Client-side State<br/>(local/hybrid)]
-    end
-    subgraph API [Backend API (Next.js API Routes)]
-        B1[API Endpoints<br/>(/api/chat, /api/conversations)]
-        B2[Handlers & Services]
-        B3[Agent Engine<br/>(react-agent, tools)]
-        B4[Database Service<br/>(Drizzle ORM)]
-    end
-    subgraph DB [Database]
-        C1[(PostgreSQL/SQLite)]
-    end
+    UI[User Interface]
+    State[Client State]
+    API[API Endpoints]
+    Handler[Handlers and Services]
+    Agent[Agent Engine]
+    DBService[Database Service]
+    DB[Database]
 
-    A1 -- HTTP (fetch/AJAX) --> B1
-    A2 -- Read/Write State --> A1
-    B1 -- Route Request --> B2
-    B2 -- Invoke Agent/Tools --> B3
-    B2 -- Persist/Retrieve Data --> B4
-    B4 -- SQL --> C1
-    B3 -- Tooling/Reasoning --> B2
-    B1 -- JSON Response --> A1
+    UI -- "HTTP request" --> API
+    State -- "Read/Write" --> UI
+    API -- "Route Request" --> Handler
+    Handler -- "Invoke Agent" --> Agent
+    Handler -- "Persist/Retrieve Data" --> DBService
+    DBService -- "SQL" --> DB
+    Agent -- "Tooling/Reasoning" --> Handler
+    API -- "JSON Response" --> UI
 ```
+
+**Legend:**
+
+- **User Interface:** Next.js/React pages and components
+- **Client State:** Local/hybrid state (browser storage)
+- **API Endpoints:** `/api/chat`, `/api/conversations`, etc.
+- **Handlers and Services:** Business logic, request handling
+- **Agent Engine:** Core agent logic and pluggable tools
+- **Database Service:** Drizzle ORM abstraction
+- **Database:** SQL database (PostgreSQL/SQLite)
 
 ---
 

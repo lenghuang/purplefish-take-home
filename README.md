@@ -21,7 +21,7 @@ Some circumstances changed and I am no longer able to work on this project, so w
 # Links
 
 - To run the project: https://github.com/lenghuang/purplefish-take-home/tree/chat-bot/README.md
-- To understand it: https://github.com/lenghuang/purplefish-take-home/tree/main/ARCHITECTURE.md
+- To understand it: https://github.com/lenghuang/purplefish-take-home/tree/main/chat-bot/architecture.md
 
 # Screenshots
 
@@ -29,9 +29,6 @@ Some circumstances changed and I am no longer able to work on this project, so w
 
 https://github.com/user-attachments/assets/08723dfd-eb8e-4b80-9b03-f79595a59b3c
 
-| An example of db persistence | Success states |
-| --- | --- |
-| <img width="1766" height="1230" alt="image" src="https://github.com/user-attachments/assets/849986d8-8dcd-4c79-a845-5281e86837c9" /> |  <img width="1488" height="1244" alt="image" src="https://github.com/user-attachments/assets/781ab7ba-3e04-46b0-90d5-5d7b349602e8" /> | 
-
-
-
+| An example of db persistence                                                                                                         | Success states                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| <img width="1766" height="1230" alt="image" src="https://github.com/user-attachments/assets/849986d8-8dcd-4c79-a845-5281e86837c9" /> | <img width="1488" height="1244" alt="image" src="https://github.com/user-attachments/assets/781ab7ba-3e04-46b0-90d5-5d7b349602e8" /> |
