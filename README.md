@@ -1,7 +1,5 @@
 # Nurse Screening Bot
 
-https://github.com/user-attachments/assets/08723dfd-eb8e-4b80-9b03-f79595a59b3c
-
 This is my take home project for a startup called Purplefish. The task was to build a screening agent to get questions from a candidate applying to be an ICU nurse, and to also have "agentic" behavior as well as database persistence.
 
 While I got an end to end website working, I really struggled with getting the behavior of the bot to be more smart, use tool calls, and remember state.
