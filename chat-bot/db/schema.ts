@@ -23,33 +23,9 @@ export const messages = sqliteTable('messages', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
-// InterviewState Table
-export const interviewStates = sqliteTable('interview_states', {
-  id: text('id').primaryKey(),
-  conversationId: text('conversation_id').notNull(),
-  stage: text('stage'),
-  candidateName: text('candidate_name'),
-  position: text('position'),
-  desiredSalary: integer('desired_salary'),
-  salaryAcceptable: integer('salary_acceptable', { mode: 'boolean' }),
-  hasLicense: integer('has_license', { mode: 'boolean' }),
-  licenseNumber: text('license_number'),
-  licenseExpiry: text('license_expiry'),
-  hasExperience: integer('has_experience', { mode: 'boolean' }),
-  experienceYears: integer('experience_years'),
-  completed: integer('completed', { mode: 'boolean' }),
-  endedEarly: integer('ended_early', { mode: 'boolean' }),
-  endReason: text('end_reason'),
-});
-
 // Relations
-export const conversationRelations = relations(conversations, ({ many, one }) => ({
+export const conversationRelations = relations(conversations, ({ many }) => ({
   messages: many(messages, { relationName: 'conversation_messages' }),
-  state: one(interviewStates, {
-    fields: [conversations.stateId],
-    references: [interviewStates.id],
-    relationName: 'conversation_state',
-  }),
 }));
 
 export const messageRelations = relations(messages, ({ one }) => ({
@@ -60,10 +36,26 @@ export const messageRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
-export const interviewStateRelations = relations(interviewStates, ({ one }) => ({
+/**
+ * PhaseStates Table
+ * completedQuestions and answers are JSON-encoded strings.
+ */
+export const phaseStates = sqliteTable('phase_states', {
+  id: text('id').primaryKey(),
+  conversationId: text('conversation_id').notNull(),
+  phaseId: text('phase_id').notNull(),
+  status: text('status').notNull(),
+  // JSON-encoded array
+  completedQuestions: text('completed_questions').notNull(),
+  // JSON-encoded object
+  answers: text('answers').notNull(),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull(),
+});
+
+export const phaseStatesRelations = relations(phaseStates, ({ one }) => ({
   conversation: one(conversations, {
-    fields: [interviewStates.conversationId],
+    fields: [phaseStates.conversationId],
     references: [conversations.id],
-    relationName: 'conversation_state',
+    relationName: 'phase_states_conversation',
   }),
 }));

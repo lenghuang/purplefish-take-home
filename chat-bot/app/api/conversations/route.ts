@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import {
   getAllConversations,
-  clearAllConversations,
   createConversation,
+  clearAllConversations,
 } from './conversation-service';
 
 // GET /api/conversations
@@ -17,6 +17,7 @@ export async function GET() {
 }
 
 // DELETE /api/conversations
+// DELETE /api/conversations
 export async function DELETE() {
   try {
     await clearAllConversations();
@@ -28,29 +29,19 @@ export async function DELETE() {
 }
 
 // POST /api/conversations
+// POST /api/conversations
 export async function POST() {
   try {
     const conversation = await createConversation();
-
     if (!conversation || !conversation.id) {
-      console.error(
-        '[POST /api/conversations] Conversation creation returned null/undefined or missing id.',
-        { conversation },
-      );
       return NextResponse.json(
         { error: 'Failed to create conversation: conversation is null or missing id.' },
         { status: 500 },
       );
     }
-
-    return NextResponse.json({ id: conversation.id });
+    return NextResponse.json(conversation, { status: 201 });
   } catch (error) {
-    console.error('[POST /api/conversations] Failed to create conversation:', error);
-    return NextResponse.json(
-      {
-        error: `Failed to create conversation: ${error}`,
-      },
-      { status: 500 },
-    );
+    console.error('Failed to create conversation:', error);
+    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 });
   }
 }

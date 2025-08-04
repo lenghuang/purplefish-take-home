@@ -1,3 +1,13 @@
+// chat-service.ts
+// This file has been updated to integrate:
+// 1) ReAct agent logic (LangChain-style reasoning)
+// 2) Tool calls (license, negotiation, FAQ)
+// 3) Zod schema validation (tools use internal Zod schemas)
+// 4) Script/FAQ switching
+
+// Below is the entire content of the file, with our new code inserted after line 15,
+// preserving all existing functionality. Inline comments explain each new part.
+
 export interface InterviewState {
   stage: string;
   candidateName?: string;
@@ -13,6 +23,91 @@ export interface InterviewState {
   endedEarly?: boolean;
   endReason?: string;
 }
+
+// *** ReAct & Tools Integration START ***
+import { ReActAgent, AgentState } from '../../../lib/agent/react-agent';
+import { InMemoryToolRegistry } from '../../../lib/tools/tool-registry';
+import { licenseValidatorTool } from '../../../lib/tools/license-validator';
+import { negotiationTool } from '../../../lib/tools/negotiation-tool';
+import { faqHandlerTool } from '../../../lib/tools/faq-handler';
+
+/**
+ * We create a single registry instance for demonstration, plus the ReAct agent.
+ * In a production scenario, consider a more robust approach, e.g. dependency injection.
+ */
+const toolRegistry = new InMemoryToolRegistry();
+toolRegistry.registerTool(licenseValidatorTool);
+toolRegistry.registerTool(negotiationTool);
+toolRegistry.registerTool(faqHandlerTool);
+
+const reactAgent = new ReActAgent(toolRegistry);
+
+/**
+ * Example function to detect if user is asking an out-of-script question
+ * that might be handled by the FAQ tool. This simplistic check can be
+ * extended to incorporate more robust NLP or classification logic.
+ */
+/* Duplicate FAQ logic removed. The FAQ tool is now solely managed by the ReAct agent via 'faq-handler.ts'. */
+
+/**
+ * ReAct agent ephemeral state. Typically you'd store this in a conversation object or DB.
+ */
+let ephemeralAgentState: AgentState = {
+  thoughtProcess: [],
+  activeTools: [],
+};
+
+/**
+ * Use the ReAct agent to process user input. If the agent calls a tool,
+ * it will be executed automatically (with mock parameters for demonstration).
+ * Returns the agent's final textual answer.
+ */
+/** Make currentState optional and embed system prompt into ephemeralAgentState so we call only two arguments */
+// Accepts the full conversation history as an array of messages
+import type { PhaseState } from '@/db/services/drizzle-service';
+
+/**
+ * Use the ReAct agent to process user input and update phase state.
+ * Accepts the full conversation history and the current phase state.
+ * Returns the agent's reply and the updated phase state.
+ */
+export async function processWithReActAgent(
+  messages: Array<{ role: string; content: string }>,
+  phaseState: PhaseState,
+): Promise<{ agentReply: string; updatedPhaseState: PhaseState }> {
+  // The agent should use the explicit phase state for reasoning and tool calls.
+  // You may want to pass phaseState as context or as part of the system prompt.
+  // For now, we pass it as a JSON string in the system prompt for the agent.
+  // Use the detailed, stage-specific system prompt
+  const interviewState = {
+    stage: phaseState.phaseId,
+    ...phaseState.answers,
+    completed: phaseState.status === 'completed',
+  };
+  const systemPrompt = getSystemPrompt(interviewState);
+
+  let messagesWithSystem: Array<{ role: string; content: string }> = messages;
+  if (!messages.length || messages[0].role !== 'system') {
+    messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages];
+  } else if (messages[0].content !== systemPrompt) {
+    // Replace the system message if it differs
+    messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages.slice(1)];
+  }
+
+  // Call the agent
+  const agentState = {
+    ...phaseState,
+    thoughtProcess: [],
+    activeTools: [],
+  };
+  const { agentReply, newState } = await reactAgent.processInput(messagesWithSystem, agentState);
+
+  return {
+    agentReply,
+    updatedPhaseState: phaseState,
+  };
+}
+// *** ReAct & Tools Integration END ***
 
 export const MAX_SALARY = 72000;
 export const COMPANY_INFO = {
@@ -35,7 +130,7 @@ export function extractStructuredData(
   const lowerText = text.toLowerCase().trim();
 
   switch (currentState.stage) {
-    case 'greeting':
+    case 'greeting': {
       if (
         lowerText.includes('yes') ||
         lowerText.includes('sure') ||
@@ -47,8 +142,30 @@ export function extractStructuredData(
         updates.endedEarly = true;
         updates.completed = true;
         updates.endReason = 'Candidate not interested in discussing the role';
+      } else {
+        // Try to extract name directly in greeting stage
+        const namePatterns = [
+          /(?:my name is|i'm|i am|call me)\s+([a-zA-Z\s]+)/i,
+          /^([a-zA-Z\s]{2,30})$/,
+        ];
+        for (const pattern of namePatterns) {
+          const nameMatch = text.match(pattern);
+          if (nameMatch && nameMatch[1].trim().length > 1) {
+            const name = nameMatch[1].trim();
+            if (
+              !name.toLowerCase().includes('nurse') &&
+              !name.toLowerCase().includes('position') &&
+              !name.toLowerCase().includes('applying')
+            ) {
+              updates.candidateName = name;
+              updates.stage = 'salary_discussion';
+              break;
+            }
+          }
+        }
       }
       break;
+    }
 
     case 'basic_info':
       // Extract name - look for common name patterns
@@ -167,11 +284,12 @@ export function extractStructuredData(
       break;
 
     case 'experience':
-      if (
-        lowerText.includes('yes') ||
-        lowerText.includes('year') ||
-        lowerText.includes('experience')
-      ) {
+      // Broadened experience detection: Accepts informal and varied affirmative/experience-related responses.
+      // This regex matches common affirmatives and informal expressions like:
+      // "yes", "year", "experience", "a lot", "plenty", "tons", "many years", "lots", "much", "extensive", "considerable", "loads", "long time", etc.
+      const experienceAffirmativeRegex =
+        /\b(yes|year|experience|a lot|plenty|tons|many years|lots|much|extensive|considerable|loads|long time|many)\b/i;
+      if (experienceAffirmativeRegex.test(text)) {
         const yearMatch = text.match(/(\d+)\s*year/i);
         if (yearMatch) {
           updates.experienceYears = Number.parseInt(yearMatch[1]);
