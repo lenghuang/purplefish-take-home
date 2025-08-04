@@ -40,29 +40,29 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 ### Installation
 
 1. **Clone the repository**
-   \`\`\`bash
+   ```bash
    git clone <repository-url>
    cd interview-chatbot
-   \`\`\`
+   ```
 
 2. **Install dependencies**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
 3. **Set up environment variables**
-   \`\`\`bash
+   ```bash
    cp .env.example .env.local
-   \`\`\`
+   ```
    Add your OpenAI API key:
-   \`\`\`
+   ```
    OPENAI_API_KEY=your_openai_api_key_here
-   \`\`\`
+   ```
 
 4. **Run the development server**
-   \`\`\`bash
+   ```bash
    npm run dev
-   \`\`\`
+   ```
 
 5. **Open in browser**
    Navigate to `http://localhost:3000`
@@ -103,58 +103,3 @@ A mobile-first AI-powered interview chatbot for screening nursing candidates, bu
 3. **Salary Cap**: $72,000 maximum compensation
 4. **Experience Threshold**: 2+ years ICU experience preferred
 5. **Mobile Usage**: Primary interface is smartphone-based
-
-## Technical Highlights
-
-### Intelligent Data Extraction
-
-\`\`\`typescript
-function extractStructuredData(text: string, currentState: InterviewState) {
-// Pattern matching for names, salaries, license info
-// Context-aware parsing based on interview stage
-// Robust handling of natural language variations
-}
-\`\`\`
-
-### Conditional Flow Management
-
-\`\`\`typescript
-const stagePrompts = {
-salary_negotiation: `Their desired salary is above our max. Ask if they'd accept $${MAX_SALARY}.`,
-license_timeline: "Ask when they expect to get their RN license.",
-// ... stage-specific prompts
-}
-\`\`\`
-
-### Mobile-Optimized UI
-
-\`\`\`tsx
-// Touch-friendly input with proper sizing
-<Input className="h-12 text-base rounded-full" />
-// Sticky positioning for mobile navigation
-
-<div className="sticky top-0 z-10 bg-white border-b">
-\`\`\`
-
-## Future Enhancements
-
-- **Database Integration**: Replace localStorage with proper database
-- **Authentication**: User accounts and secure access
-- **Analytics Dashboard**: Interview completion rates and insights
-- **Multi-Position Support**: Configurable interview scripts
-- **Voice Integration**: Speech-to-text for hands-free interviews
-
-## Testing
-
-The chatbot handles various scenarios:
-
-- ✅ Interested candidates with valid credentials
-- ✅ Salary negotiations and rejections
-- ✅ License verification and timelines
-- ✅ Experience assessment and follow-ups
-- ✅ Early exits for unqualified candidates
-- ✅ Company questions and role inquiries
-
-## Support
-
-For questions or issues, please refer to the code comments or create an issue in the repository.
