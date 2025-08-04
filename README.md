@@ -31,4 +31,4 @@ https://private-user-images.githubusercontent.com/32604574/463991081-04240ba4-a5
 
 # Architecture
 
-- https://github.com/lenghuang/purplefish-take-home/tree/main/chat-bot/README.md
+- https://github.com/lenghuang/purplefish-take-home/tree/main/ARCHITECTURE.md
