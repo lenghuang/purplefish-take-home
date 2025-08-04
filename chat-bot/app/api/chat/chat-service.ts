@@ -284,11 +284,12 @@ export function extractStructuredData(
       break;
 
     case 'experience':
-      if (
-        lowerText.includes('yes') ||
-        lowerText.includes('year') ||
-        lowerText.includes('experience')
-      ) {
+      // Broadened experience detection: Accepts informal and varied affirmative/experience-related responses.
+      // This regex matches common affirmatives and informal expressions like:
+      // "yes", "year", "experience", "a lot", "plenty", "tons", "many years", "lots", "much", "extensive", "considerable", "loads", "long time", etc.
+      const experienceAffirmativeRegex =
+        /\b(yes|year|experience|a lot|plenty|tons|many years|lots|much|extensive|considerable|loads|long time|many)\b/i;
+      if (experienceAffirmativeRegex.test(text)) {
         const yearMatch = text.match(/(\d+)\s*year/i);
         if (yearMatch) {
           updates.experienceYears = Number.parseInt(yearMatch[1]);
